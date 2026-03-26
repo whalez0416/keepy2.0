@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+apscheduler
+requests
+playwright
+python-dotenv
+aiosmtplib
