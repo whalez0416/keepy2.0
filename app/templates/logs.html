@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h2 class="mb-4">최근 점검 로그 (최근 100건)</h2>
+        
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>시간</th>
+                        <th>사이트명</th>
+                        <th>유형</th>
+                        <th>상태</th>
+                        <th>응답시간</th>
+                        <th>사유</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="small">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td class="fw-bold">{{ log.site.site_name }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                {{ '홈페이지' if log.check_type == 'homepage' else '상담폼' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if log.status == 'success' %}
+                                <span class="badge bg-success">성공</span>
+                            {% elif log.status == 'warning' %}
+                                <span class="badge bg-warning text-dark">지연</span>
+                            {% else %}
+                                <span class="badge bg-danger">실패</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ "%.2f"|format(log.response_time) if log.response_time else '-' }}s</td>
+                        <td class="small text-muted text-truncate" style="max-width: 300px;" title="{{ log.fail_reason }}">
+                            {{ log.fail_reason or '-' }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">로그 기록이 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

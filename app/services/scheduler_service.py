@@ -3,6 +3,7 @@ from ..scheduler import scheduler
 from ..models import Site
 from .homepage_checker import check_homepage
 from .form_checker import check_form
+from .spam_hunter import run_spam_hunter
 from .alert_service import handle_check_result
 from ..db import SessionLocal
 from ..utils.logger import get_logger
@@ -18,8 +19,12 @@ def run_site_check(site_id: int, check_type: str):
 
         if check_type == "homepage":
             log = check_homepage(db, site)
-        else:
+        elif check_type == "form":
             log = check_form(db, site)
+        elif check_type == "spam":
+            for config in site.spam_configs:
+                run_spam_hunter(db, config)
+            log = None # 스팸 헌터는 별도의 로그 처리가 필요할 수 있음
             
         if log:
             handle_check_result(db, site, check_type, log.status, log.fail_reason)
@@ -55,10 +60,20 @@ def update_site_jobs(site: Site):
             id=f"site_{site.id}_form"
         )
     
+    # 스팸 헌터 작업 추가 (예: 6시간마다)
+    if site.spam_configs:
+        scheduler.add_job(
+            run_site_check,
+            'interval',
+            hours=6,
+            args=[site.id, "spam"],
+            id=f"site_{site.id}_spam"
+        )
+    
     logger.debug(f"사이트 작업 업데이트 완료: site_id={site.id}")
 
 def remove_site_jobs(site_id: int):
-    for job_id in [f"site_{site_id}_homepage", f"site_{site_id}_form"]:
+    for job_id in [f"site_{site_id}_homepage", f"site_{site_id}_form", f"site_{site_id}_spam"]:
         if scheduler.get_job(job_id):
             scheduler.remove_job(job_id)
 

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>사이트 모니터링 대시보드</h2>
+    <a href="/sites/new" class="btn btn-primary">새 사이트 등록</a>
+</div>
+
+<div class="row">
+    {% for site in sites %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title text-truncate" style="max-width: 180px;">{{ site.site_name }}</h5>
+                    <span class="status-badge status-badge-{{ site.status_color }}">
+                        {{ site.status_text }}
+                    </span>
+                </div>
+                <p class="card-text small text-muted mb-1">
+                    <strong>홈페이지:</strong> <a href="{{ site.homepage_url }}" target="_blank">{{ site.homepage_url }}</a>
+                </p>
+                {% if site.form_url %}
+                <p class="card-text small text-muted mb-3">
+                    <strong>상담폼:</strong> <a href="{{ site.form_url }}" target="_blank">링크 이동</a>
+                </p>
+                {% endif %}
+                
+                {% if site.last_screenshot %}
+                <div class="mb-3">
+                    <img src="{{ url_for('static', path=site.last_screenshot) }}" class="img-fluid rounded border shadow-sm" alt="최근 점검 화면" style="max-height: 150px; width: 100%; object-fit: cover;">
+                </div>
+                {% else %}
+                <div class="mb-3 bg-light rounded border d-flex align-items-center justify-content-center" style="height: 150px;">
+                    <span class="text-muted small">점검 이미지 없음</span>
+                </div>
+                {% endif %}
+                
+                <div class="border-top pt-3 mt-3">
+                    <p class="small mb-1"><strong>마지막 점검:</strong> {{ site.last_check_time.strftime('%Y-%m-%d %H:%M:%S') if site.last_check_time else '기록 없음' }}</p>
+                    <p class="small mb-0"><strong>마지막 정상:</strong> {{ site.last_success_time.strftime('%Y-%m-%d %H:%M:%S') if site.last_success_time else '기록 없음' }}</p>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0 d-flex justify-content-between">
+                <div>
+                    <a href="/sites/{{ site.id }}/edit" class="btn btn-outline-secondary btn-sm btn-action">수정</a>
+                    <form action="/sites/{{ site.id }}/toggle" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-{{ 'warning' if site.is_active else 'success' }} btn-sm btn-action">
+                            {{ '비활성' if site.is_active else '활성' }}
+                        </button>
+                    </form>
+                </div>
+                <form action="/sites/{{ site.id }}/check" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-dark btn-sm btn-action">수동 점검</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <p class="text-muted">등록된 사이트가 없습니다. 새 사이트를 등록해 주세요.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

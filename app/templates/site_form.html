@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <h2 class="mb-4">{{ '사이트 정보 수정' if site else '새 사이트 등록' }}</h2>
+                
+                <form action="{{ '/sites/' + (site.id|string) + '/edit' if site else '/sites/new' }}" method="post">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">사이트명</label>
+                            <input type="text" name="site_name" class="form-control" value="{{ site.site_name if site else '' }}" required placeholder="예: 무지개병원">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">활성화 여부</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="is_active" value="true" {{ 'checked' if not site or site.is_active else '' }}>
+                                <label class="form-check-label">자동 점검 실행</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">홈페이지 URL</label>
+                        <input type="url" name="homepage_url" class="form-control" value="{{ site.homepage_url if site else '' }}" required placeholder="https://example.com">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">상담폼 URL (선택)</label>
+                        <input type="url" name="form_url" class="form-control" value="{{ site.form_url if site else '' }}" placeholder="https://example.com/contact">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">홈페이지 체크 주기 (분)</label>
+                            <input type="number" name="check_interval_minutes" class="form-control" value="{{ site.check_interval_minutes if site else 5 }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">폼 체크 주기 (분)</label>
+                            <input type="number" name="form_check_interval_minutes" class="form-control" value="{{ site.form_check_interval_minutes if site else 60 }}" required>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h5>상담폼 상세 설정 (Playwright 전용)</h5>
+                    <p class="small text-muted mb-3">상담폼 자동 테스트를 위한 CSS 셀렉터와 성공 확인 문구를 입력하세요.</p>
+
+                    <div class="mb-3">
+                        <label class="form-label">성공 확인 문구</label>
+                        <input type="text" name="expected_success_text" class="form-control" value="{{ site.expected_success_text if site else '' }}" placeholder="예: 감사합니다, 완료되었습니다">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">이름 필드 셀렉터</label>
+                            <input type="text" name="name_selector" class="form-control" value="{{ site.name_selector if site else '' }}" placeholder="input[name='name']">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">연락처 필드 셀렉터</label>
+                            <input type="text" name="phone_selector" class="form-control" value="{{ site.phone_selector if site else '' }}" placeholder="input[name='phone']">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">제목 필드 셀렉터</label>
+                            <input type="text" name="subject_selector" class="form-control" value="{{ site.subject_selector if site else '' }}" placeholder="input[name='subject']">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">메시지 필드 셀렉터</label>
+                            <input type="text" name="message_selector" class="form-control" value="{{ site.message_selector if site else '' }}" placeholder="textarea[name='message']">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">제출 버튼 셀렉터</label>
+                            <input type="text" name="submit_selector" class="form-control" value="{{ site.submit_selector if site else '' }}" placeholder="button[type='submit']">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">비밀번호 필드 셀렉터</label>
+                            <input type="text" name="password_selector" class="form-control" value="{{ site.password_selector if site else '' }}" placeholder="input[type='password']">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">비밀번호 값 (테스트용)</label>
+                            <input type="text" name="password_value" class="form-control" value="{{ site.password_value if site else '' }}" placeholder="예: 1234">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">동의 체크박스 셀렉터</label>
+                            <input type="text" name="agreement_selector" class="form-control" value="{{ site.agreement_selector if site else '' }}" placeholder="input[type='checkbox']">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">고급 액션 시퀀스 (JSON 설정)</label>
+                        <textarea name="extra_steps_json" class="form-control" rows="5" placeholder='[{"type": "select", "selector": "#center_gb2", "value": "107"}, {"type": "wait", "seconds": 2}]'>{{ site.extra_steps_json if site else '' }}</textarea>
+                        <div class="form-text">복잡한 예약 프로세스를 위한 단계를 정의하세요. (진료과 선택, 날짜 클릭 등)</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="/" class="btn btn-light">취소</a>
+                        <button type="submit" class="btn btn-primary px-5">저장하기</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

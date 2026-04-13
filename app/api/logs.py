@@ -4,7 +4,7 @@ from typing import List
 from ..db import get_db
 from .. import models, schemas
 
-router = APIRouter(prefix="/logs", tags=["logs"])
+router = APIRouter(tags=["logs"])
 
 @router.get("/", response_model=List[schemas.Log])
 def get_all_logs(limit: int = 100, db: Session = Depends(get_db)):

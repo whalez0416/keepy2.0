@@ -1,0 +1,20 @@
+/* Simple CSS for Keepy */
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.table th {
+    background-color: #f1f3f5;
+    font-weight: 600;
+}
+
+.btn-action {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+}
+
+.status-badge-success { background-color: #d1e7dd; color: #0a3622; }
+.status-badge-warning { background-color: #fff3cd; color: #664d03; }
+.status-badge-danger { background-color: #f8d7da; color: #842029; }
+.status-badge-secondary { background-color: #e2e3e5; color: #41464b; }

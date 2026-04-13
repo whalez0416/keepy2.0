@@ -1,4 +1,5 @@
 import smtplib
+from email.header import Header
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from ..config import settings
@@ -28,8 +29,8 @@ def send_alert_email(site_name: str, check_type: str, status: str, fail_reason: 
     msg = MIMEMultipart()
     msg['From'] = settings.SMTP_FROM_EMAIL
     msg['To'] = settings.SMTP_USER # 관리자에게 전송 (MVP 단순화)
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
+    msg['Subject'] = Header(subject, 'utf-8')
+    msg.attach(MIMEText(body, 'plain', 'utf-8'))
     
     try:
         server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)

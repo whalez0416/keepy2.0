@@ -4,7 +4,7 @@ from typing import List
 from ..db import get_db
 from .. import models, schemas
 
-router = APIRouter(prefix="/alerts", tags=["alerts"])
+router = APIRouter(tags=["alerts"])
 
 @router.get("/", response_model=List[schemas.Alert])
 def get_alerts(limit: int = 100, db: Session = Depends(get_db)):

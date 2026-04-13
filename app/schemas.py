@@ -4,6 +4,7 @@ from datetime import datetime
 
 class SiteBase(BaseModel):
     site_name: str
+    hospital_name: Optional[str] = None
     homepage_url: str
     form_url: Optional[str] = None
     check_interval_minutes: int = 5
@@ -11,8 +12,13 @@ class SiteBase(BaseModel):
     expected_success_text: Optional[str] = None
     name_selector: Optional[str] = None
     phone_selector: Optional[str] = None
+    subject_selector: Optional[str] = None
     message_selector: Optional[str] = None
+    password_selector: Optional[str] = None
+    password_value: Optional[str] = None
+    agreement_selector: Optional[str] = None
     submit_selector: Optional[str] = None
+    extra_steps_json: Optional[str] = None
     is_active: bool = True
 
 class SiteCreate(SiteBase):
@@ -28,7 +34,11 @@ class SiteUpdate(BaseModel):
     name_selector: Optional[str] = None
     phone_selector: Optional[str] = None
     message_selector: Optional[str] = None
+    password_selector: Optional[str] = None
+    password_value: Optional[str] = None
+    agreement_selector: Optional[str] = None
     submit_selector: Optional[str] = None
+    extra_steps_json: Optional[str] = None
     is_active: Optional[bool] = None
 
 class Site(SiteBase):
@@ -65,6 +75,49 @@ class AlertBase(BaseModel):
 
 class Alert(AlertBase):
     id: int
+
+    class Config:
+        from_attributes = True
+
+# New schemas for Multi-Tenancy
+class UserBase(BaseModel):
+    email: str
+    role: str
+
+class UserCreate(UserBase):
+    password: str
+
+class User(UserBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class MembershipBase(BaseModel):
+    user_id: int
+    site_id: int
+    role: str
+
+class Membership(MembershipBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class SpamConfigBase(BaseModel):
+    site_id: int
+    board_url: str
+    admin_id: Optional[str] = None
+    admin_pw: Optional[str] = None
+    keywords: Optional[str] = None
+    is_active: bool = True
+
+class SpamConfig(SpamConfigBase):
+    id: int
+    created_at: datetime
 
     class Config:
         from_attributes = True

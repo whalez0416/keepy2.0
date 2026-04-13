@@ -1,9 +1,11 @@
 from fastapi import FastAPI
-from .db import engine, Base
-from .api import sites, logs, alerts, checks
-from .scheduler import start_scheduler
-from .services.scheduler_service import init_all_jobs
-from .utils.logger import get_logger
+from fastapi.staticfiles import StaticFiles
+from app.db import engine, Base
+from app.api import sites, logs, alerts, checks
+from app.ui import views
+from app.scheduler import scheduler, start_scheduler
+from app.services.scheduler_service import init_all_jobs
+from app.utils.logger import get_logger
 
 # 로그 관리를 위한 로거 초기화
 logger = get_logger("main")
@@ -13,11 +15,17 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Keepy MVP", description="병원 웹사이트 모니터링 시스템")
 
-# API 라우터 포함
-app.include_router(sites.router)
-app.include_router(logs.router)
-app.include_router(alerts.router)
-app.include_router(checks.router)
+# 정적 파일 마운트
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# API 라우터 등록
+app.include_router(sites.router, prefix="/api/sites", tags=["Sites API"])
+app.include_router(logs.router, prefix="/api/logs", tags=["Logs API"])
+app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts API"])
+app.include_router(checks.router, prefix="/api/checks", tags=["Checks API"])
+
+# UI 라우터 등록 (루트 경로)
+app.include_router(views.router, tags=["Admin UI"])
 
 @app.on_event("startup")
 def startup_event():
@@ -30,10 +38,5 @@ def startup_event():
 
 @app.on_event("shutdown")
 def shutdown_event():
-    from .scheduler import scheduler
     scheduler.shutdown()
     logger.debug("서버 종료 중.")
-
-@app.get("/")
-def root():
-    return {"message": "Keepy MVP API에 오신 것을 환영합니다"}

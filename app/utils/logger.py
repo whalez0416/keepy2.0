@@ -12,3 +12,6 @@ logging.basicConfig(
 
 def get_logger(name: str):
     return logging.getLogger(name)
+
+# Default logger instance for direct imports
+logger = get_logger("app")

@@ -6,7 +6,7 @@ from ..services.homepage_checker import check_homepage
 from ..services.form_checker import check_form
 from ..services.alert_service import handle_check_result
 
-router = APIRouter(prefix="/checks", tags=["checks"])
+router = APIRouter(tags=["checks"])
 
 @router.post("/run/{site_id}")
 def run_manual_check(site_id: int, db: Session = Depends(get_db)):

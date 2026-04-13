@@ -5,7 +5,7 @@ from ..db import get_db
 from .. import models, schemas
 from ..services.scheduler_service import update_site_jobs, remove_site_jobs
 
-router = APIRouter(prefix="/sites", tags=["sites"])
+router = APIRouter(tags=["sites"])
 
 @router.post("/", response_model=schemas.Site)
 def create_site(site: schemas.SiteCreate, db: Session = Depends(get_db)):
