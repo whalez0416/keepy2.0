@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: keepy-api
+    runtime: docker
+    plan: free
+    region: singapore # 한국과 가까운 지역
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        value: sqlite:///./keepy.db
+      - key: DEBUG
+        value: "false"
+    healthCheckPath: /
+    # 무료 티어에서는 디스크 볼륨 지원이 제한적일 수 있으므로
+    # 초기 데이터 유실을 방지하기 위해 SQLite를 사용하되
+    # 추후 Supabase(PostgreSQL) 등으로 전환 권장

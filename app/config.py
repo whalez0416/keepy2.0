@@ -3,9 +3,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     APP_NAME: str = "Keepy MVP"
-    DEBUG: bool = True
+    DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     
-    DATABASE_URL: str = "sqlite:///./keepy.db"
+    # Railway 등 클라우드 환경에서는 /data/keepy.db 경로를 선호함
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./keepy.db")
     
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587

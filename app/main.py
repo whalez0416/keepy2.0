@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.db import engine, Base
 from app.api import sites, logs, alerts, checks
@@ -15,6 +16,15 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Keepy MVP", description="병원 웹사이트 모니터링 시스템")
 
+# CORS 설정 추가
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # 정적 파일 마운트
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -26,6 +36,10 @@ app.include_router(checks.router, prefix="/api/checks", tags=["Checks API"])
 
 # UI 라우터 등록 (루트 경로)
 app.include_router(views.router, tags=["Admin UI"])
+
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "Keepy API Server is running"}
 
 @app.on_event("startup")
 def startup_event():
