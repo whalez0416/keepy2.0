@@ -8,3 +8,5 @@ requests
 playwright
 python-dotenv
 aiosmtplib
+jinja2
+python-multipart
