@@ -41,6 +41,17 @@ export interface SiteCheckLog {
   screenshot_path?: string;
 }
 
+export interface Alert {
+  id: number;
+  site_id: number;
+  check_type: string;
+  alert_level: string;
+  message: string;
+  sent_at?: string;
+  resolved_at?: string;
+  created_at: string;
+}
+
 export const sitesApi = {
   list: () => api.get<Site[]>('/sites/'),
   get: (id: number) => api.get<Site>(`/sites/${id}`),
@@ -52,6 +63,10 @@ export const sitesApi = {
 
 export const logsApi = {
   list: (siteId?: number) => api.get<SiteCheckLog[]>('/logs/', { params: { site_id: siteId } }),
+};
+
+export const alertsApi = {
+  list: (limit: number = 100) => api.get<Alert[]>('/alerts/', { params: { limit } }),
 };
 
 export default api;
