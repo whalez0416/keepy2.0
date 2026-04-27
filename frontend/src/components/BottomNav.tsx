@@ -3,7 +3,8 @@ import {
   BarChart3, 
   Activity, 
   AlertTriangle, 
-  Settings 
+  Settings,
+  Brain
 } from 'lucide-react';
 
 interface BottomNavProps {
@@ -16,6 +17,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
     { id: 'dashboard', icon: BarChart3, label: 'Dash' },
     { id: 'sites', icon: Activity, label: 'Sites' },
     { id: 'alerts', icon: AlertTriangle, label: 'Alerts' },
+    { id: 'spam', icon: Brain, label: 'Spam' },
     { id: 'settings', icon: Settings, label: 'Set' },
   ];
 

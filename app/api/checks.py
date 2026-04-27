@@ -5,14 +5,19 @@ from .. import models, schemas
 from ..services.homepage_checker import check_homepage
 from ..services.form_checker import check_form
 from ..services.alert_service import handle_check_result
+from .auth import get_current_user
 
 router = APIRouter(tags=["checks"])
 
 @router.post("/run/{site_id}")
-def run_manual_check(site_id: int, db: Session = Depends(get_db)):
-    site = db.query(models.Site).filter(models.Site.id == site_id).first()
+def run_manual_check(site_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    query = db.query(models.Site).filter(models.Site.id == site_id)
+    if current_user.role != models.UserRole.SUPERADMIN:
+        query = query.join(models.Membership).filter(models.Membership.user_id == current_user.id)
+        
+    site = query.first()
     if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
+        raise HTTPException(status_code=404, detail="Site not found or access denied")
 
     # Run homepage check
     h_log = check_homepage(db, site)

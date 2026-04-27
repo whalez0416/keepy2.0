@@ -46,9 +46,25 @@ class Site(Base):
     site_name = Column(String, nullable=False)
     hospital_name = Column(String, nullable=True) # 병원 그룹화용
     homepage_url = Column(String, nullable=False)
-    form_url = Column(String, nullable=True)
     check_interval_minutes = Column(Integer, default=5)
-    form_check_interval_minutes = Column(Integer, default=60)
+    extra_steps_json = Column(Text, nullable=True)
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    memberships = relationship("Membership", back_populates="site")
+    form_configs = relationship("FormConfig", back_populates="site", cascade="all, delete-orphan")
+    spam_configs = relationship("SpamConfig", back_populates="site")
+
+class FormConfig(Base):
+    __tablename__ = "form_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id"))
+    name = Column(String, nullable=False) # 폼 이름 (예: 메인 상담, 예약 폼)
+    form_url = Column(String, nullable=False)
+    check_interval_minutes = Column(Integer, default=60)
     expected_success_text = Column(String, nullable=True)
     
     # Form Selectors
@@ -61,15 +77,10 @@ class Site(Base):
     agreement_selector = Column(String, nullable=True)
     submit_selector = Column(String, nullable=True)
     
-    # Advanced Action Sequence (JSON string)
-    extra_steps_json = Column(Text, nullable=True)
-    
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    memberships = relationship("Membership", back_populates="site")
-    spam_configs = relationship("SpamConfig", back_populates="site")
+    site = relationship("Site", back_populates="form_configs")
 
 class SpamConfig(Base):
     __tablename__ = "spam_configs"

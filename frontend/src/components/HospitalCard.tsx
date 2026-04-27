@@ -5,9 +5,10 @@ import { Site, sitesApi } from '../lib/api';
 interface HospitalCardProps {
   site: Site;
   onRefresh?: () => void;
+  onEdit?: (site: Site) => void;
 }
 
-const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh }) => {
+const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh, onEdit }) => {
   const [checking, setChecking] = React.useState(false);
 
   const handleManualCheck = async () => {
@@ -70,7 +71,12 @@ const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh }) => {
         </div>
 
         <div className="flex gap-2">
-          <button className="flex-1 py-2.5 glass rounded-xl text-xs font-bold hover:bg-white/10 transition-all border-white/10">상세 정보</button>
+          <button 
+            onClick={() => onEdit?.(site)}
+            className="flex-1 py-2.5 glass rounded-xl text-xs font-bold hover:bg-white/10 transition-all border-white/10"
+          >
+            상세 정보
+          </button>
           <button 
             onClick={handleManualCheck}
             disabled={checking}

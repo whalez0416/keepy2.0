@@ -5,7 +5,8 @@ import {
   Activity, 
   AlertTriangle, 
   Settings, 
-  Download 
+  Download,
+  Brain
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -18,6 +19,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'dashboard', icon: BarChart3, label: '대시보드' },
     { id: 'sites', icon: Activity, label: '병원 관리' },
     { id: 'alerts', icon: AlertTriangle, label: '알림 내역' },
+    { id: 'spam', icon: Brain, label: 'AI 스팸 관리' },
     { id: 'settings', icon: Settings, label: '설정' },
   ];
 

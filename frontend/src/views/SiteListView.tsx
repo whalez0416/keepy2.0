@@ -21,6 +21,9 @@ const SiteListView: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
 
+  const user = JSON.parse(localStorage.getItem('keepy_user') || '{}');
+  const isSuperAdmin = user.role === 'superadmin';
+
   const fetchSites = async () => {
     try {
       setLoading(true);
@@ -64,12 +67,14 @@ const SiteListView: React.FC = () => {
           <h2 className="text-3xl font-bold tracking-tight">병원 관리</h2>
           <p className="text-slate-400 mt-1 font-medium">모니터링 대상 병원 및 설정을 관리합니다.</p>
         </div>
-        <button 
-          onClick={handleAdd}
-          className="bg-emerald-500 hover:bg-emerald-600 px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
-        >
-          <Plus size={20} /> 신규 병원 등록
-        </button>
+        {isSuperAdmin && (
+          <button 
+            onClick={handleAdd}
+            className="bg-emerald-500 hover:bg-emerald-600 px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
+          >
+            <Plus size={20} /> 신규 병원 등록
+          </button>
+        )}
       </div>
 
       {/* Filters & Search */}
@@ -160,13 +165,15 @@ const SiteListView: React.FC = () => {
                         >
                           <Edit2 size={18} />
                         </button>
-                        <button 
-                          onClick={() => handleDelete(site.id)} 
-                          className="text-slate-400 hover:text-red-400 p-2.5 rounded-xl hover:bg-red-500/10 transition-all active:scale-90"
-                          title="삭제"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        {isSuperAdmin && (
+                          <button 
+                            onClick={() => handleDelete(site.id)} 
+                            className="text-slate-400 hover:text-red-400 p-2.5 rounded-xl hover:bg-red-500/10 transition-all active:scale-90"
+                            title="삭제"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

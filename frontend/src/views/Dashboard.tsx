@@ -22,7 +22,11 @@ import StatCard from '../components/StatCard';
 import HospitalCard from '../components/HospitalCard';
 import { sitesApi, logsApi, Site, SiteCheckLog } from '../lib/api';
 
-const DashboardView: React.FC = () => {
+interface DashboardViewProps {
+  onEditSite?: (site: Site) => void;
+}
+
+const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite }) => {
   const [sites, setSites] = useState<Site[]>([]);
   const [logs, setLogs] = useState<SiteCheckLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +150,12 @@ const DashboardView: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {sites.map(site => (
-                <HospitalCard key={site.id} site={site} onRefresh={fetchData} />
+                <HospitalCard 
+                  key={site.id} 
+                  site={site} 
+                  onRefresh={fetchData} 
+                  onEdit={onEditSite}
+                />
               ))}
             </div>
           )}

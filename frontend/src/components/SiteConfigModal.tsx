@@ -11,9 +11,14 @@ import {
   MousePointer2, 
   Keyboard, 
   Timer,
-  Layout
+  Layout,
+  FileText,
+  Activity,
+  Shield,
+  Globe,
+  Brain
 } from 'lucide-react';
-import { Site, sitesApi } from '../lib/api';
+import { Site, FormConfig, SpamConfig, sitesApi } from '../lib/api';
 
 interface SiteConfigModalProps {
   isOpen: boolean;
@@ -24,21 +29,24 @@ interface SiteConfigModalProps {
 
 interface ActionStep {
   type: 'click' | 'type' | 'wait';
-  selector?: string;
+  selector: string;
   value?: string;
+  seconds?: number;
 }
 
 const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSave, site }) => {
-  const [formData, setFormData] = useState<Partial<Site>>({
+  const [formData, setFormData] = useState({
     site_name: '',
     hospital_name: '',
     homepage_url: '',
-    form_url: '',
     check_interval_minutes: 5,
-    form_check_interval_minutes: 60,
-    is_active: true,
+    extra_steps_json: ''
   });
-  
+
+  const [forms, setForms] = useState<Partial<FormConfig>[]>([]);
+  const [spams, setSpams] = useState<Partial<SpamConfig>[]>([]);
+  const [activeFormIndex, setActiveFormIndex] = useState<number | null>(null);
+  const [activeSpamIndex, setActiveSpamIndex] = useState<number | null>(null);
   const [extraSteps, setExtraSteps] = useState<ActionStep[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,70 +54,37 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
 
   useEffect(() => {
     if (site) {
-      setFormData(site);
-      setShowAdvanced(!!site.form_url || !!site.name_selector);
-      try {
-        if (site.extra_steps_json) {
+      setFormData({
+        site_name: site.site_name,
+        hospital_name: site.hospital_name || '',
+        homepage_url: site.homepage_url,
+        check_interval_minutes: site.check_interval_minutes,
+        extra_steps_json: site.extra_steps_json || ''
+      });
+      setForms(site.form_configs || []);
+      setSpams(site.spam_configs || []);
+      if (site.extra_steps_json) {
+        try {
           setExtraSteps(JSON.parse(site.extra_steps_json));
-        } else {
+        } catch (e) {
           setExtraSteps([]);
         }
-      } catch (e) {
-        setExtraSteps([]);
       }
     } else {
       setFormData({
         site_name: '',
         hospital_name: '',
         homepage_url: '',
-        form_url: '',
         check_interval_minutes: 5,
-        form_check_interval_minutes: 60,
-        is_active: true,
+        extra_steps_json: ''
       });
+      setForms([]);
+      setSpams([]);
       setExtraSteps([]);
-      setShowAdvanced(false);
+      setActiveFormIndex(null);
+      setActiveSpamIndex(null);
     }
   }, [site, isOpen]);
-
-  const addStep = () => {
-    setExtraSteps([...extraSteps, { type: 'click', selector: '' }]);
-  };
-
-  const removeStep = (index: number) => {
-    setExtraSteps(extraSteps.filter((_, i) => i !== index));
-  };
-
-  const updateStep = (index: number, updates: Partial<ActionStep>) => {
-    const newSteps = [...extraSteps];
-    newSteps[index] = { ...newSteps[index], ...updates };
-    setExtraSteps(newSteps);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const finalData = {
-      ...formData,
-      extra_steps_json: extraSteps.length > 0 ? JSON.stringify(extraSteps) : null
-    };
-
-    try {
-      if (site?.id) {
-        await sitesApi.update(site.id, finalData);
-      } else {
-        await sitesApi.create(finalData);
-      }
-      onSave();
-      onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || '설정 저장에 실패했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -119,261 +94,284 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
     }));
   };
 
+  const handleFormChange = (index: number, field: string, value: any) => {
+    const updatedForms = [...forms];
+    updatedForms[index] = { ...updatedForms[index], [field]: value };
+    setForms(updatedForms);
+  };
+
+  const handleSpamChange = (index: number, field: string, value: any) => {
+    const updatedSpams = [...spams];
+    updatedSpams[index] = { ...updatedSpams[index], [field]: value };
+    setSpams(updatedSpams);
+  };
+
+  const addForm = () => {
+    setForms([...forms, { 
+      name: `상담폼 ${forms.length + 1}`, 
+      form_url: '', 
+      check_interval_minutes: 60,
+      is_active: true 
+    }]);
+    setActiveFormIndex(forms.length);
+  };
+
+  const addSpam = () => {
+    setSpams([...spams, { 
+      board_url: '', 
+      is_active: true 
+    }]);
+    setActiveSpamIndex(spams.length);
+  };
+
+  const removeForm = (index: number) => {
+    setForms(forms.filter((_, i) => i !== index));
+    if (activeFormIndex === index) setActiveFormIndex(null);
+  };
+
+  const removeSpam = (index: number) => {
+    setSpams(spams.filter((_, i) => i !== index));
+    if (activeSpamIndex === index) setActiveSpamIndex(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const payload = {
+        ...formData,
+        extra_steps_json: extraSteps.length > 0 ? JSON.stringify(extraSteps) : null,
+        form_configs: forms,
+        spam_configs: spams
+      };
+
+      if (site) {
+        await sitesApi.update(site.id, payload);
+      } else {
+        await sitesApi.create(payload);
+      }
+      onSave();
+      onClose();
+    } catch (err: any) {
+      console.error('Save error:', err);
+      const detail = err.response?.data?.detail;
+      const errorMessage = typeof detail === 'string' 
+        ? detail 
+        : Array.isArray(detail) 
+          ? detail.map((d: any) => `${d.loc.join('.')}: ${d.msg}`).join(', ')
+          : '저장에 실패했습니다. 데이터 형식을 확인해주세요.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#080a0f]/80 backdrop-blur-xl animate-in fade-in duration-300">
-      <div className="bg-[#0c0e14] border border-white/5 w-full max-w-3xl rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative">
-        {/* Background Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent blur-md" />
-        
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
+      <div className="absolute inset-0 bg-[#080a0f]/80 backdrop-blur-md" onClick={onClose} />
+      
+      <div className="glass w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-[40px] border border-white/5 shadow-2xl flex flex-col relative z-10 animate-in zoom-in duration-300">
         {/* Header */}
-        <div className="p-8 border-b border-white/[0.03] flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-black tracking-tight text-white">{site ? '병원 정보 수정' : '신규 병원 등록'}</h2>
-            <p className="text-slate-500 text-xs font-bold mt-1 uppercase tracking-widest">Monitoring Configuration Center</p>
+        <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <Plus className="text-emerald-400" size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black tracking-tight text-white">{site ? '병원 설정 수정' : '새 병원 등록'}</h2>
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-0.5">Full Site & Spam Monitoring</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-3 glass rounded-2xl hover:bg-white/5 transition-all group">
-            <X size={20} className="text-slate-500 group-hover:text-white transition-colors" />
+          <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl text-slate-500 transition-all">
+            <X size={24} />
           </button>
         </div>
 
-        {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-center gap-3 text-red-400 text-sm font-bold animate-in shake duration-300">
-              <AlertCircle size={20} />
-              {error}
-            </div>
-          )}
-
-          {/* Basic Section */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 mb-2">
-               <Layout size={18} className="text-emerald-400" />
-               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">기본 정보</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">병원명 *</label>
-                <input 
-                  required
-                  name="site_name"
-                  value={formData.site_name}
-                  onChange={handleChange}
-                  className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
-                  placeholder="예: 민병원"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">그룹 / 지점</label>
-                <input 
-                  name="hospital_name"
-                  value={formData.hospital_name}
-                  onChange={handleChange}
-                  className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
-                  placeholder="예: 갑상선 센터"
-                />
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">홈페이지 URL *</label>
-                <input 
-                  required
-                  name="homepage_url"
-                  value={formData.homepage_url}
-                  onChange={handleChange}
-                  className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700 text-emerald-400"
-                  placeholder="https://..."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Monitoring Intervals */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-emerald-500/[0.03] border border-emerald-500/10 rounded-[24px]">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-black text-emerald-500/70 uppercase tracking-widest">홈페이지 체크 주기</label>
-                <span className="text-[10px] font-bold text-slate-500">{formData.check_interval_minutes}분 마다</span>
-              </div>
-              <input 
-                type="range"
-                min="1"
-                max="60"
-                name="check_interval_minutes"
-                value={formData.check_interval_minutes}
-                onChange={handleChange}
-                className="w-full accent-emerald-500"
-              />
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-black text-emerald-500/70 uppercase tracking-widest">상담폼 체크 주기</label>
-                <span className="text-[10px] font-bold text-slate-500">{formData.form_check_interval_minutes}분 마다</span>
-              </div>
-              <input 
-                type="range"
-                min="5"
-                max="1440"
-                step="5"
-                name="form_check_interval_minutes"
-                value={formData.form_check_interval_minutes}
-                onChange={handleChange}
-                className="w-full accent-emerald-500"
-              />
-            </div>
-          </div>
-
-          {/* Advanced Section Toggle */}
-          <button 
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center justify-between w-full p-6 glass border-white/[0.03] rounded-3xl hover:bg-white/[0.02] transition-all group"
-          >
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${showAdvanced ? 'bg-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-slate-500'}`}>
-                <MousePointer2 size={24} />
-              </div>
-              <div className="text-left">
-                <div className="font-black text-slate-200">정밀 상담폼 모니터링</div>
-                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Consultation Form Actions</div>
-              </div>
-            </div>
-            {showAdvanced ? <ChevronUp size={20} className="text-emerald-400" /> : <ChevronDown size={20} className="text-slate-600" />}
-          </button>
-
-          {showAdvanced && (
-            <div className="space-y-8 pt-2 animate-in slide-in-from-top-4 duration-500 pb-4">
-              <div className="space-y-3">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">상담폼 페이지 URL</label>
-                <input 
-                  name="form_url"
-                  value={formData.form_url}
-                  onChange={handleChange}
-                  className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-mono text-sm text-blue-400"
-                  placeholder="https://.../reserve"
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">폼 필드 선택자 (CSS Selectors)</span>
-                   <Info size={14} className="text-slate-700" />
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            
+            {/* Left: Basic Info & Forms */}
+            <div className="space-y-10">
+              <section className="space-y-6">
+                <div className="flex items-center gap-3">
+                   <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
+                   <h3 className="text-sm font-black text-slate-300 uppercase tracking-wider">기본 정보</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { label: '이름 입력칸', name: 'name_selector', placeholder: '#user_name' },
-                    { label: '연락처 입력칸', name: 'phone_selector', placeholder: '#user_hp' },
-                    { label: '동의 체크박스', name: 'agreement_selector', placeholder: '.agree-check' },
-                    { label: '전송 버튼', name: 'submit_selector', placeholder: '#btn-submit' },
-                  ].map(field => (
-                    <div key={field.name} className="space-y-1.5 p-4 glass rounded-2xl border border-white/[0.02]">
-                      <label className="text-[10px] font-black text-slate-500 uppercase">{field.label}</label>
-                      <input 
-                        name={field.name}
-                        value={(formData as any)[field.name] || ''}
-                        onChange={handleChange}
-                        className="w-full bg-transparent border-none outline-none text-xs font-mono text-emerald-400 placeholder:text-slate-700"
-                        placeholder={field.placeholder}
-                      />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">병원 이름 *</label>
+                    <input 
+                      required
+                      name="site_name"
+                      value={formData.site_name}
+                      onChange={handleChange}
+                      className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">병원 그룹</label>
+                    <input 
+                      name="hospital_name"
+                      value={formData.hospital_name}
+                      onChange={handleChange}
+                      className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">홈페이지 URL *</label>
+                    <input 
+                      required
+                      name="homepage_url"
+                      value={formData.homepage_url}
+                      onChange={handleChange}
+                      className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold text-emerald-400"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
+                    <h3 className="text-sm font-black text-slate-300 uppercase tracking-wider">상담폼 모니터링 ({forms.length})</h3>
+                  </div>
+                  <button type="button" onClick={addForm} className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 text-xs font-black hover:bg-emerald-500/20 transition-all flex items-center gap-1">
+                    <Plus size={14} /> 추가
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {forms.map((form, idx) => (
+                    <div key={idx} className={`border rounded-3xl transition-all ${activeFormIndex === idx ? 'bg-emerald-500/5 border-emerald-500/20 p-6' : 'hover:bg-white/[0.02] border-white/5 p-4'}`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer" onClick={() => setActiveFormIndex(activeFormIndex === idx ? null : idx)}>
+                          <FileText size={20} className={activeFormIndex === idx ? 'text-emerald-400' : 'text-slate-500'} />
+                          <div className="truncate">
+                            <div className="text-sm font-bold text-slate-200">{form.name || `상담폼 ${idx + 1}`}</div>
+                            <div className="text-[10px] text-slate-500 truncate">{form.form_url || 'URL 미입력'}</div>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => removeForm(idx)} className="p-2 text-slate-600 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
+                      </div>
+                      {activeFormIndex === idx && (
+                        <div className="mt-6 pt-6 border-t border-white/5 space-y-4 animate-in slide-in-from-top-2">
+                          <input placeholder="폼 이름" value={form.name} onChange={e => handleFormChange(idx, 'name', e.target.value)} className="w-full glass-compact border border-white/5 rounded-xl px-4 py-2.5 text-sm font-bold" />
+                          <input placeholder="폼 URL" value={form.form_url} onChange={e => handleFormChange(idx, 'form_url', e.target.value)} className="w-full glass-compact border border-white/5 rounded-xl px-4 py-2.5 text-sm text-emerald-400 font-bold" />
+                          <div className="grid grid-cols-2 gap-3">
+                            <input placeholder="이름 셀렉터" value={form.name_selector} onChange={e => handleFormChange(idx, 'name_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                            <input placeholder="연락처 셀렉터" value={form.phone_selector} onChange={e => handleFormChange(idx, 'phone_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                            <input placeholder="제목 셀렉터" value={form.subject_selector} onChange={e => handleFormChange(idx, 'subject_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                            <input placeholder="메시지 셀렉터" value={form.message_selector} onChange={e => handleFormChange(idx, 'message_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                            <input placeholder="동의 체크박스 셀렉터" value={form.agreement_selector} onChange={e => handleFormChange(idx, 'agreement_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                            <input placeholder="제출 버튼 셀렉터" value={form.submit_selector} onChange={e => handleFormChange(idx, 'submit_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Action Builder */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">추가 액션 시퀀스 (Action Builder)</span>
-                   <button 
-                    type="button"
-                    onClick={addStep}
-                    className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black hover:text-emerald-300 transition-colors bg-emerald-500/10 px-3 py-1.5 rounded-lg"
-                   >
-                     <Plus size={14} /> 액션 추가
-                   </button>
-                </div>
-                
-                <div className="space-y-3">
-                  {extraSteps.length === 0 ? (
-                    <div className="p-8 glass rounded-2xl border border-dashed border-white/5 text-center text-slate-600 text-xs font-bold">
-                      설정된 추가 액션이 없습니다.
-                    </div>
-                  ) : (
-                    extraSteps.map((step, index) => (
-                      <div key={index} className="flex items-center gap-3 p-4 glass rounded-2xl border border-white/5 animate-in slide-in-from-right-4 duration-300">
-                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center font-black text-[10px] text-slate-500">{index + 1}</div>
-                        
-                        <select 
-                          value={step.type}
-                          onChange={(e) => updateStep(index, { type: e.target.value as any })}
-                          className="bg-white/5 border-none outline-none rounded-xl px-3 py-2 text-xs font-bold text-slate-300"
-                        >
-                          <option value="click">클릭</option>
-                          <option value="type">입력</option>
-                          <option value="wait">대기</option>
-                        </select>
-
-                        <div className="flex-1 flex gap-2">
-                          {step.type !== 'wait' && (
-                            <input 
-                              placeholder="선택자 (#id, .class)"
-                              value={step.selector}
-                              onChange={(e) => updateStep(index, { selector: e.target.value })}
-                              className="flex-1 bg-white/2 border border-white/5 rounded-xl px-4 py-2 text-xs font-mono text-emerald-400 outline-none focus:border-emerald-500/50"
-                            />
-                          )}
-                          {step.type === 'type' && (
-                            <input 
-                              placeholder="입력값"
-                              value={step.value}
-                              onChange={(e) => updateStep(index, { value: e.target.value })}
-                              className="flex-1 bg-white/2 border border-white/5 rounded-xl px-4 py-2 text-xs text-slate-300 outline-none focus:border-emerald-500/50"
-                            />
-                          )}
-                          {step.type === 'wait' && (
-                            <input 
-                              type="number"
-                              placeholder="밀리초 (ms)"
-                              value={step.value}
-                              onChange={(e) => updateStep(index, { value: e.target.value })}
-                              className="w-32 bg-white/2 border border-white/5 rounded-xl px-4 py-2 text-xs font-mono text-amber-400 outline-none focus:border-emerald-500/50"
-                            />
-                          )}
-                        </div>
-
-                        <button 
-                          onClick={() => removeStep(index)}
-                          className="p-2 text-slate-600 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              </section>
             </div>
-          )}
+
+            {/* Right: Spam Boards & Advanced */}
+            <div className="space-y-10">
+              <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-4 bg-violet-500 rounded-full" />
+                    <h3 className="text-sm font-black text-slate-300 uppercase tracking-wider">AI 스팸 감시 게시판 ({spams.length})</h3>
+                  </div>
+                  <button type="button" onClick={addSpam} className="px-3 py-1.5 bg-violet-500/10 text-violet-400 rounded-xl border border-violet-500/20 text-xs font-black hover:bg-violet-500/20 transition-all flex items-center gap-1">
+                    <Plus size={14} /> 추가
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {spams.map((spam, idx) => (
+                    <div key={idx} className={`border rounded-3xl transition-all ${activeSpamIndex === idx ? 'bg-violet-500/5 border-violet-500/20 p-6' : 'hover:bg-white/[0.02] border-white/5 p-4'}`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer" onClick={() => setActiveSpamIndex(activeSpamIndex === idx ? null : idx)}>
+                          <Shield size={20} className={activeSpamIndex === idx ? 'text-violet-400' : 'text-slate-500'} />
+                          <div className="truncate">
+                            <div className="text-sm font-bold text-slate-200">{spam.board_url ? '감시 게시판' : `게시판 ${idx + 1}`}</div>
+                            <div className="text-[10px] text-slate-500 truncate">{spam.board_url || '목록 URL 미입력'}</div>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => removeSpam(idx)} className="p-2 text-slate-600 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
+                      </div>
+                      {activeSpamIndex === idx && (
+                        <div className="mt-6 pt-6 border-t border-white/5 space-y-4 animate-in slide-in-from-top-2">
+                           <div className="space-y-1">
+                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">게시판 목록 URL *</label>
+                             <input 
+                               value={spam.board_url}
+                               onChange={(e) => handleSpamChange(idx, 'board_url', e.target.value)}
+                               className="w-full glass-compact border border-white/5 rounded-xl px-4 py-2.5 text-sm text-violet-400 font-bold"
+                               placeholder="https://.../board.php?bo_table=free"
+                             />
+                           </div>
+                           <div className="space-y-1">
+                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">추가 키워드 (선택)</label>
+                             <input 
+                               value={spam.keywords}
+                               onChange={(e) => handleSpamChange(idx, 'keywords', e.target.value)}
+                               className="w-full glass-compact border border-white/5 rounded-xl px-4 py-2.5 text-sm text-slate-300"
+                               placeholder="비아그라, 카지노, ..."
+                             />
+                           </div>
+                           <div className="bg-violet-500/5 p-4 rounded-2xl border border-violet-500/10 flex items-start gap-3">
+                              <Brain size={16} className="text-violet-400 mt-1 flex-shrink-0" />
+                              <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
+                                목록 URL을 입력하면 <strong>Gemini AI</strong>가 게시물 내용을 분석하여 스팸 여부를 자동 판별합니다.
+                              </p>
+                           </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-4 pt-10">
+                <button 
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center gap-2 text-slate-500 hover:text-white transition-all font-bold text-sm"
+                >
+                  {showAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  고급 설정 (공통 액션 시퀀스)
+                </button>
+                {showAdvanced && (
+                  <textarea 
+                    name="extra_steps_json"
+                    value={formData.extra_steps_json}
+                    onChange={handleChange}
+                    rows={4}
+                    className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-1 focus:ring-blue-500/30 transition-all font-mono text-xs text-blue-300"
+                    placeholder='[{"type": "click", "selector": "#close-popup"}]'
+                  />
+                )}
+              </section>
+            </div>
+          </div>
         </form>
 
         {/* Footer */}
-        <div className="p-8 border-t border-white/[0.03] flex gap-4 bg-[#080a0f]/50">
-          <button 
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-4 px-6 glass rounded-2xl font-black text-slate-500 hover:text-slate-200 transition-all text-sm uppercase tracking-widest"
-          >
-            취소
-          </button>
-          <button 
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex-[2] py-4 px-6 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-2xl shadow-emerald-500/30 text-sm uppercase tracking-widest active:scale-95"
-          >
-            {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={20} />}
-            {site ? '설정 업데이트' : '모니터링 시작'}
-          </button>
+        <div className="px-8 py-6 border-t border-white/5 flex items-center justify-between bg-white/[0.02]">
+          <div className="text-red-400 text-sm font-bold">{error}</div>
+          <div className="flex gap-4">
+            <button type="button" onClick={onClose} className="px-8 py-3 rounded-2xl font-bold text-slate-400 hover:text-white transition-all">취소</button>
+            <button onClick={handleSubmit} disabled={loading} className="bg-emerald-500 text-white px-10 py-3 rounded-2xl font-black flex items-center gap-2 hover:bg-emerald-600 transition-all shadow-2xl active:scale-95 disabled:opacity-50">
+              {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={20} />}
+              저장하기
+            </button>
+          </div>
         </div>
       </div>
     </div>

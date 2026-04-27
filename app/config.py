@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     ALERT_COOLDOWN_HOURS: int = 1
     HOMEPAGE_FAIL_THRESHOLD: int = 2
     FORM_FAIL_THRESHOLD: int = 1
+    
+    # AI 스팸 분류 (Gemini API)
+    GEMINI_API_KEY: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
