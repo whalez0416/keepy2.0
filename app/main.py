@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.db import engine, Base
+from app.db import engine, Base, SessionLocal
 from app.api import sites, logs, alerts, checks, spam, auth, organizations, billing
+from app.api.auth import get_password_hash
+from app.models import User, UserRole
 from app.ui import views
 from app.scheduler import scheduler, start_scheduler
 from app.services.scheduler_service import init_all_jobs
@@ -52,6 +54,28 @@ def startup_event():
     start_scheduler()
     # 활성 상태인 사이트들의 작업 로드 및 등록
     init_all_jobs()
+    
+    # 마스터 계정 자동 생성 (없을 경우)
+    db = SessionLocal()
+    try:
+        admin_email = "master@keepy.com"
+        admin_pw = "keepy1234"
+        existing = db.query(User).filter(User.email == admin_email).first()
+        if not existing:
+            hashed_pw = get_password_hash(admin_pw)
+            new_user = User(
+                email=admin_email,
+                hashed_password=hashed_pw,
+                role=UserRole.SUPERADMIN
+            )
+            db.add(new_user)
+            db.commit()
+            logger.info(f"마스터 계정이 자동으로 생성되었습니다: {admin_email}")
+    except Exception as e:
+        logger.error(f"마스터 계정 생성 중 오류: {e}")
+    finally:
+        db.close()
+
     logger.debug("서버가 시작되었으며 모든 작업이 초기화되었습니다.")
 
 @app.on_event("shutdown")
