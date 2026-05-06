@@ -13,7 +13,7 @@ router = APIRouter(tags=["checks"])
 def run_manual_check(site_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     query = db.query(models.Site).filter(models.Site.id == site_id)
     if current_user.role != models.UserRole.SUPERADMIN:
-        query = query.join(models.Membership).filter(models.Membership.user_id == current_user.id)
+        query = query.join(models.Organization).join(models.OrganizationMember).filter(models.OrganizationMember.user_id == current_user.id)
         
     site = query.first()
     if not site:

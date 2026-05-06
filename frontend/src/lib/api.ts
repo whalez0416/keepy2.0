@@ -15,6 +15,18 @@ authApiInstance.interceptors.request.use((config) => {
   return config;
 });
 
+authApiInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('keepy_token');
+      localStorage.removeItem('keepy_user');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export interface User {
   id: number;
   email: string;
@@ -52,14 +64,24 @@ export interface SpamConfig {
 
 export interface Site {
   id: number;
+  org_id: number;
   site_name: string;
   hospital_name?: string;
   homepage_url: string;
   check_interval_minutes: number;
   extra_steps_json?: string;
+  baseline_screenshot_path?: string;
+  emergency_mode_active: boolean;
+  emergency_message?: string;
+  admin_path?: string;
+  whitelisted_ips?: string;
+  expected_phone?: string;
+  expected_kakao_url?: string;
   is_active: boolean;
   created_at: string;
   updated_at?: string;
+  last_check_status?: string;
+  last_check_at?: string;
   form_configs: FormConfig[];
   spam_configs: SpamConfig[];
 }
@@ -105,6 +127,14 @@ export interface SpamScanResult {
   duration_seconds: number;
 }
 
+export interface Organization {
+  id: number;
+  name: string;
+  slug: string;
+  logo_url?: string;
+  is_active: boolean;
+}
+
 export const authApi = {
   login: (email: string, password: string) => 
     axios.post(`${API_BASE_URL}/auth/login`, new URLSearchParams({ username: email, password })),
@@ -114,12 +144,19 @@ export const authApi = {
     authApiInstance.get('/auth/me'),
 };
 
+export const organizationsApi = {
+  list: () => authApiInstance.get<Organization[]>('/organizations/'),
+  get: (id: number) => authApiInstance.get<Organization>(`/organizations/${id}`),
+  create: (data: any) => authApiInstance.post<Organization>('/organizations/', data),
+};
+
 export const sitesApi = {
   list: () => authApiInstance.get<Site[]>('/sites/'),
   get: (id: number) => authApiInstance.get<Site>(`/sites/${id}`),
   create: (data: any) => authApiInstance.post<Site>('/sites/', data),
   update: (id: number, data: any) => authApiInstance.patch<Site>(`/sites/${id}`, data),
   delete: (id: number) => authApiInstance.delete(`/sites/${id}`),
+  manualCheck: (id: number) => authApiInstance.post(`/checks/run/${id}`),
 };
 
 export const logsApi = {
@@ -132,8 +169,13 @@ export const alertsApi = {
 };
 
 export const spamApi = {
-  getConfigs: (siteId: number) => authApiInstance.get<SpamConfig[]>(`/spam/config/site/${siteId}`),
-  createConfig: (data: any) => authApiInstance.post<SpamConfig>('/spam/config/', data),
-  deleteConfig: (id: number) => authApiInstance.delete(`/spam/config/${id}`),
-  runConfig: (id: number) => authApiInstance.post<SpamScanResult>(`/spam/scan/${id}`),
+  getConfigs: (siteId: number) => authApiInstance.get<SpamConfig[]>(`/spam/configs/${siteId}`),
+  createConfig: (data: any) => authApiInstance.post<SpamConfig>('/spam/configs', data),
+  deleteConfig: (id: number) => authApiInstance.delete(`/spam/configs/${id}`),
+  runConfig: (id: number) => authApiInstance.post<SpamScanResult>(`/spam/configs/${id}/run`),
+};
+
+export const billingApi = {
+  getStatus: (orgId: number) => authApiInstance.get(`/billing/status/${orgId}`),
+  subscribe: (orgId: number, plan: string) => authApiInstance.post(`/billing/subscribe/${orgId}`, null, { params: { plan } }),
 };

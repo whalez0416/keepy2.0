@@ -6,25 +6,31 @@ import {
   AlertTriangle, 
   Settings, 
   Download,
-  Brain
+  Brain,
+  LogOut,
+  CreditCard,
+  Crown
 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) => {
   const menuItems = [
     { id: 'dashboard', icon: BarChart3, label: '대시보드' },
     { id: 'sites', icon: Activity, label: '병원 관리' },
     { id: 'alerts', icon: AlertTriangle, label: '알림 내역' },
     { id: 'spam', icon: Brain, label: 'AI 스팸 관리' },
+    { id: 'pricing', icon: Crown, label: '요금제 안내' },
+    { id: 'billing', icon: CreditCard, label: '결제 및 구독' },
     { id: 'settings', icon: Settings, label: '설정' },
   ];
 
   return (
-    <aside className="hidden md:flex w-64 glass border-r border-white/5 flex-col z-50">
+    <aside className="hidden md:flex w-64 h-screen sticky top-0 glass border-r border-white/5 flex-col z-50">
       <div className="p-8">
         <h1 className="text-2xl font-bold gradient-text flex items-center gap-2 tracking-tight">
           <Shield className="text-emerald-500 fill-emerald-500/20" size={28} /> Keepy <span className="text-[10px] font-bold text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded-md bg-slate-900/50">V2</span>
@@ -54,13 +60,24 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
         })}
       </nav>
 
-      <div className="p-6 mt-auto">
-        <button className="w-full flex flex-col items-center justify-center gap-2 py-4 px-4 glass border-emerald-500/20 text-emerald-400 rounded-2xl hover:bg-emerald-500/10 transition-all font-bold shadow-lg shadow-emerald-500/5 group">
+      <div className="p-4 mt-auto space-y-2">
+        <button className="w-full flex flex-col items-center justify-center gap-2 py-3 px-4 glass border-emerald-500/20 text-emerald-400 rounded-2xl hover:bg-emerald-500/10 transition-all font-bold shadow-lg shadow-emerald-500/5 group">
           <div className="flex items-center gap-2">
             <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
             <span className="text-xs">데이터 마이그레이션</span>
           </div>
           <span className="text-[10px] opacity-60 font-medium italic">Keepy 1.0 (Render)</span>
+        </button>
+
+        <button 
+          onClick={() => {
+            console.log("Sidebar logout initiated");
+            onLogout();
+          }}
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all font-bold group border border-transparent hover:border-red-500/20"
+        >
+          <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm">로그아웃</span>
         </button>
       </div>
     </aside>

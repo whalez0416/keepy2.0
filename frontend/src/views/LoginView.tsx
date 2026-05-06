@@ -5,9 +5,10 @@ import { authApi } from '../lib/api';
 interface LoginViewProps {
   onLoginSuccess: (token: string, user: any) => void;
   onSwitchToRegister: () => void;
+  onShowPricing: () => void;
 }
 
-const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegister }) => {
+const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegister, onShowPricing }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -103,12 +104,18 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegiste
           </form>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center flex flex-col gap-3">
           <button 
             onClick={onSwitchToRegister}
             className="text-slate-500 hover:text-emerald-400 text-sm font-bold transition-colors"
           >
             계정이 없으신가요? 담당자 가입하기
+          </button>
+          <button 
+            onClick={onShowPricing}
+            className="text-slate-400/50 hover:text-white text-xs font-bold transition-colors uppercase tracking-widest"
+          >
+            구독 플랜 둘러보기
           </button>
         </div>
       </div>

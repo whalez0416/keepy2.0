@@ -20,29 +20,45 @@ import {
 } from 'recharts';
 import StatCard from '../components/StatCard';
 import HospitalCard from '../components/HospitalCard';
+import LogDetailModal from '../components/LogDetailModal';
 import { sitesApi, logsApi, Site, SiteCheckLog } from '../lib/api';
 
 interface DashboardViewProps {
   onEditSite?: (site: Site) => void;
+  selectedOrgId?: number | 'all';
+  user?: any;
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId = 'all', user }) => {
   const [sites, setSites] = useState<Site[]>([]);
   const [logs, setLogs] = useState<SiteCheckLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // 로그 상세 모달 상태
+  const [selectedSiteForLog, setSelectedSiteForLog] = useState<Site | null>(null);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [sitesRes, logsRes] = await Promise.all([
-        sitesApi.list(),
-        logsApi.list()
-      ]);
-      setSites(sitesRes.data);
-      setLogs(logsRes.data);
+      const sitesRes = await sitesApi.list();
+      let fetchedSites = sitesRes.data;
+      
+      if (selectedOrgId !== 'all') {
+        fetchedSites = fetchedSites.filter(s => s.org_id === selectedOrgId);
+      }
+      setSites(fetchedSites);
+
+      // Logs fetching (don't let it block sites display)
+      try {
+        const logsRes = await logsApi.list();
+        setLogs(logsRes.data);
+      } catch (logError) {
+        console.error('Failed to fetch logs:', logError);
+      }
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('Failed to fetch dashboard sites:', error);
     } finally {
       setLoading(false);
     }
@@ -79,9 +95,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite }) => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 p-8 rounded-[32px] border border-white/[0.03] relative overflow-hidden group">
         <div className="relative z-10">
           <h1 className="text-4xl font-black tracking-tight text-white flex items-center gap-3">
-            안녕하세요, 관리자님 👋
+            {user?.role === 'superadmin' && selectedOrgId === 'all' 
+              ? '안녕하세요, 마스터님 👋' 
+              : `안녕하세요, ${sites[0]?.hospital_name || user?.full_name?.split(' ')[0] || '관리자'}님 👋`}
           </h1>
-          <p className="text-slate-400 mt-2 font-medium">오늘도 병원 시스템이 안전하게 모니터링되고 있습니다.</p>
+          <p className="text-slate-400 mt-2 font-medium">
+            {user?.role === 'superadmin' && selectedOrgId === 'all' ? '모든 병원 시스템이 안전하게 모니터링되고 있습니다.' : `${sites[0]?.hospital_name || '병원'} 시스템이 최상의 상태를 유지하고 있습니다.`}
+          </p>
         </div>
         <div className="relative z-10 text-right">
           <div className="flex items-center gap-2 text-emerald-400 font-black text-xl justify-end">
@@ -120,6 +140,52 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite }) => {
         />
       </div>
 
+      {selectedOrgId === 'all' && issueCount > 0 && (
+        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-[32px] flex items-center gap-6 animate-in fade-in zoom-in">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-500 shrink-0">
+            <AlertCircle size={32} />
+          </div>
+          <div>
+            <h4 className="text-xl font-black text-white">주의가 필요한 시스템이 감지되었습니다.</h4>
+            <p className="text-red-400/80 font-medium mt-1">
+              현재 {issueCount}개의 사이트에서 장애 또는 지연이 발생하고 있습니다. 상세 내용을 확인하고 필요한 조치를 취해주세요.
+            </p>
+          </div>
+          <button 
+            className="ml-auto bg-red-500 text-white px-6 py-3 rounded-2xl font-black hover:bg-red-600 transition-all shadow-xl shadow-red-500/20 active:scale-95 shrink-0"
+            onClick={() => {
+              // 장애가 있거나 로그가 없는 사이트 찾기
+              const firstIssue = sites.find(s => {
+                const siteLogs = logs.filter(l => l.site_id === s.id);
+                const isHealthy = siteLogs.length > 0 && siteLogs[0].status === 'success';
+                return !isHealthy;
+              });
+
+              if (firstIssue) {
+                // 로그 모달 띄우기
+                const siteLogs = logs.filter(l => l.site_id === firstIssue.id);
+                setSelectedSiteForLog(firstIssue);
+                setIsLogModalOpen(true);
+
+                const el = document.getElementById(`site-card-${firstIssue.id}`);
+                if (el) {
+                  const headerOffset = 100;
+                  const elementPosition = el.getBoundingClientRect().top;
+                  const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                  window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                  });
+                }
+              }
+            }}
+          >
+            장애 발생지로 이동
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Sites List */}
         <div className="lg:col-span-2 space-y-6">
@@ -150,12 +216,17 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite }) => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {sites.map(site => (
-                <HospitalCard 
-                  key={site.id} 
-                  site={site} 
-                  onRefresh={fetchData} 
-                  onEdit={onEditSite}
-                />
+                <div key={site.id} id={`site-card-${site.id}`}>
+                  <HospitalCard 
+                    site={site} 
+                    onRefresh={fetchData} 
+                    onEdit={onEditSite}
+                    onViewLog={() => {
+                      setSelectedSiteForLog(site);
+                      setIsLogModalOpen(true);
+                    }}
+                  />
+                </div>
               ))}
             </div>
           )}
@@ -214,6 +285,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite }) => {
           </div>
         </div>
       </div>
+
+      <LogDetailModal 
+        isOpen={isLogModalOpen}
+        onClose={() => setIsLogModalOpen(false)}
+        site={selectedSiteForLog}
+        latestLog={selectedSiteForLog ? logs.filter(l => l.site_id === selectedSiteForLog.id)[0] : null}
+      />
     </div>
   );
 };

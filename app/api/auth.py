@@ -71,6 +71,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # 마지막 로그인 시간 기록
+    user.last_login_at = datetime.utcnow()
+    db.commit()
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
@@ -95,6 +99,33 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
         role=models.UserRole.USER
     )
     db.add(new_user)
+    db.flush() # ID를 얻기 위해 flush
+    
+    # 기본 조직 생성 (유저 이메일을 기반으로 슬러그 생성)
+    org_name = f"{user.email.split('@')[0]}'s Workspace"
+    org_slug = user.email.split('@')[0].replace('.', '-')
+    
+    # 슬러그 중복 방지 (간단하게)
+    existing_org = db.query(models.Organization).filter(models.Organization.slug == org_slug).first()
+    if existing_org:
+        org_slug = f"{org_slug}-{new_user.id}"
+        
+    new_org = models.Organization(
+        name=org_name,
+        slug=org_slug,
+        billing_email=user.email
+    )
+    db.add(new_org)
+    db.flush()
+    
+    # 유저를 조직의 OWNER로 등록
+    new_membership = models.OrganizationMember(
+        user_id=new_user.id,
+        org_id=new_org.id,
+        role=models.MembershipRole.OWNER
+    )
+    db.add(new_membership)
+    
     db.commit()
     db.refresh(new_user)
     return new_user

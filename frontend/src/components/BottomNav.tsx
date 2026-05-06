@@ -4,7 +4,8 @@ import {
   Activity, 
   AlertTriangle, 
   Settings,
-  Brain
+  Brain,
+  CreditCard
 } from 'lucide-react';
 
 interface BottomNavProps {
@@ -18,6 +19,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
     { id: 'sites', icon: Activity, label: 'Sites' },
     { id: 'alerts', icon: AlertTriangle, label: 'Alerts' },
     { id: 'spam', icon: Brain, label: 'Spam' },
+    { id: 'billing', icon: CreditCard, label: 'Pay' },
     { id: 'settings', icon: Settings, label: 'Set' },
   ];
 

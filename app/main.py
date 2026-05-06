@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.db import engine, Base
-from app.api import sites, logs, alerts, checks, spam, auth
+from app.api import sites, logs, alerts, checks, spam, auth, organizations, billing
 from app.ui import views
 from app.scheduler import scheduler, start_scheduler
 from app.services.scheduler_service import init_all_jobs
@@ -31,6 +31,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # API 라우터 등록
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth API"])
 app.include_router(sites.router, prefix="/api/sites", tags=["Sites API"])
+app.include_router(organizations.router, prefix="/api/organizations", tags=["Organizations API"])
+app.include_router(billing.router, prefix="/api/billing", tags=["Billing API"])
 app.include_router(logs.router, prefix="/api/logs", tags=["Logs API"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts API"])
 app.include_router(checks.router, prefix="/api/checks", tags=["Checks API"])

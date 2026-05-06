@@ -6,9 +6,10 @@ interface HospitalCardProps {
   site: Site;
   onRefresh?: () => void;
   onEdit?: (site: Site) => void;
+  onViewLog?: () => void;
 }
 
-const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh, onEdit }) => {
+const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh, onEdit, onViewLog }) => {
   const [checking, setChecking] = React.useState(false);
 
   const handleManualCheck = async () => {
@@ -75,7 +76,13 @@ const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh, onEdit }) 
             onClick={() => onEdit?.(site)}
             className="flex-1 py-2.5 glass rounded-xl text-xs font-bold hover:bg-white/10 transition-all border-white/10"
           >
-            상세 정보
+            상세 설정
+          </button>
+          <button 
+            onClick={onViewLog}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border ${isError ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20' : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'}`}
+          >
+            로그 보기
           </button>
           <button 
             onClick={handleManualCheck}
@@ -83,7 +90,7 @@ const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh, onEdit }) 
             className={`px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20 ${checking ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <RefreshCw size={14} className={checking ? 'animate-spin' : ''} />
-            {checking ? '점검중...' : '수동 점검'}
+            {checking ? '' : '재점검'}
           </button>
         </div>
       </div>

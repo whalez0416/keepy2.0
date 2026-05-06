@@ -18,7 +18,7 @@ import {
   Globe,
   Brain
 } from 'lucide-react';
-import { Site, FormConfig, SpamConfig, sitesApi } from '../lib/api';
+import { Site, FormConfig, SpamConfig, sitesApi, Organization, organizationsApi } from '../lib/api';
 
 interface SiteConfigModalProps {
   isOpen: boolean;
@@ -40,7 +40,13 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
     hospital_name: '',
     homepage_url: '',
     check_interval_minutes: 5,
-    extra_steps_json: ''
+    extra_steps_json: '',
+    org_id: 0 as number | undefined,
+    expected_phone: '',
+    expected_kakao_url: '',
+    admin_path: '/admin',
+    emergency_mode_active: false,
+    emergency_message: ''
   });
 
   const [forms, setForms] = useState<Partial<FormConfig>[]>([]);
@@ -51,6 +57,16 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+
+  const user = JSON.parse(localStorage.getItem('keepy_user') || '{}');
+  const isSuperAdmin = user.role === 'superadmin';
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      organizationsApi.list().then(res => setOrganizations(res.data));
+    }
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     if (site) {
@@ -59,13 +75,19 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
         hospital_name: site.hospital_name || '',
         homepage_url: site.homepage_url,
         check_interval_minutes: site.check_interval_minutes,
-        extra_steps_json: site.extra_steps_json || ''
+        extra_steps_json: site.extra_steps_json || '',
+        org_id: site.org_id,
+        expected_phone: site.expected_phone || '',
+        expected_kakao_url: site.expected_kakao_url || '',
+        admin_path: site.admin_path || '/admin',
+        emergency_mode_active: site.emergency_mode_active || false,
+        emergency_message: site.emergency_message || ''
       });
       setForms(site.form_configs || []);
       setSpams(site.spam_configs || []);
       if (site.extra_steps_json) {
         try {
-          setExtraSteps(JSON.parse(site.extra_steps_json));
+          setExtraSteps(JSON.stringify(site.extra_steps_json).startsWith('[') ? JSON.parse(site.extra_steps_json) : []);
         } catch (e) {
           setExtraSteps([]);
         }
@@ -76,7 +98,13 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
         hospital_name: '',
         homepage_url: '',
         check_interval_minutes: 5,
-        extra_steps_json: ''
+        extra_steps_json: '',
+        org_id: undefined,
+        expected_phone: '',
+        expected_kakao_url: '',
+        admin_path: '/admin',
+        emergency_mode_active: false,
+        emergency_message: ''
       });
       setForms([]);
       setSpams([]);
@@ -88,9 +116,17 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    let finalValue: any = value;
+    
+    if (type === 'number' || name === 'org_id') {
+      finalValue = parseInt(value);
+    } else if (type === 'checkbox') {
+      finalValue = (e.target as HTMLInputElement).checked;
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'number' ? parseInt(value) : value
+      [name]: finalValue
     }));
   };
 
@@ -214,13 +250,30 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">병원 그룹</label>
-                    <input 
-                      name="hospital_name"
-                      value={formData.hospital_name}
-                      onChange={handleChange}
-                      className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
-                    />
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      {isSuperAdmin ? '소속 조직 (관리자 권한)' : '병원 그룹'}
+                    </label>
+                    {isSuperAdmin ? (
+                      <select 
+                        name="org_id"
+                        value={formData.org_id || ''}
+                        onChange={handleChange}
+                        className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold"
+                      >
+                        <option value="" disabled>조직 선택</option>
+                        {organizations.map(org => (
+                          <option key={org.id} value={org.id}>{org.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input 
+                        name="hospital_name"
+                        value={formData.hospital_name}
+                        onChange={handleChange}
+                        className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
+                        disabled
+                      />
+                    )}
                   </div>
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">홈페이지 URL *</label>
@@ -279,8 +332,81 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
               </section>
             </div>
 
-            {/* Right: Spam Boards & Advanced */}
+            {/* Right: Security & Spam & Advanced */}
             <div className="space-y-10">
+              {/* NEW: Premium Security Section */}
+              <section className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-1.5 h-4 bg-amber-500 rounded-full" />
+                  <h3 className="text-sm font-black text-slate-300 uppercase tracking-wider">보안 및 가용성 (Premium)</h3>
+                </div>
+
+                <div className="glass-compact border border-amber-500/10 rounded-[32px] p-8 space-y-6 bg-amber-500/[0.02]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">정상 전화번호</label>
+                      <input 
+                        name="expected_phone"
+                        value={formData.expected_phone}
+                        onChange={handleChange}
+                        className="w-full glass-compact border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-amber-200"
+                        placeholder="02-1234-5678"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">정상 카톡 채널 URL</label>
+                      <input 
+                        name="expected_kakao_url"
+                        value={formData.expected_kakao_url}
+                        onChange={handleChange}
+                        className="w-full glass-compact border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-amber-200"
+                        placeholder="pf.kakao.com/_xxxx"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">관리자 페이지 경로 (IP 보안 감시)</label>
+                    <input 
+                      name="admin_path"
+                      value={formData.admin_path}
+                      onChange={handleChange}
+                      className="w-full glass-compact border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-slate-300"
+                      placeholder="/admin"
+                    />
+                  </div>
+
+                  <div className="pt-4 border-t border-white/5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Activity size={16} className="text-amber-400" />
+                        <span className="text-sm font-bold text-slate-200">긴급 안내 배너 (Maintenance)</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          name="emergency_mode_active"
+                          checked={formData.emergency_mode_active}
+                          onChange={handleChange}
+                          className="sr-only peer" 
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500 peer-checked:after:bg-white"></div>
+                      </label>
+                    </div>
+                    {formData.emergency_mode_active && (
+                      <textarea 
+                        name="emergency_message"
+                        value={formData.emergency_message}
+                        onChange={handleChange}
+                        rows={2}
+                        className="w-full glass-compact border border-amber-500/20 rounded-xl px-4 py-3 text-sm font-medium text-amber-100 animate-in slide-in-from-top-2"
+                        placeholder="현재 서버 점검 중입니다. 급한 용무는 02-1234-5678로 연락 주세요."
+                      />
+                    )}
+                  </div>
+                </div>
+              </section>
+
               <section className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -338,7 +464,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                 </div>
               </section>
 
-              <section className="space-y-4 pt-10">
+              <section className="space-y-4 pt-4">
                 <button 
                   type="button"
                   onClick={() => setShowAdvanced(!showAdvanced)}

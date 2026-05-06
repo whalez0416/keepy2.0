@@ -8,9 +8,10 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from ..db import get_db
-from ..models import SpamConfig, Site
+from .. import models
 from ..services.ai_spam_classifier import run_ai_spam_hunter, classify_posts_ai
 from ..utils.logger import get_logger
+from .auth import get_current_user
 
 logger = get_logger("api_spam")
 
@@ -39,11 +40,11 @@ class SpamConfigCreate(BaseModel):
 
 
 @router.post("/scan")
-def scan_board(request: SpamScanRequest):
+def scan_board(request: SpamScanRequest, current_user: models.User = Depends(get_current_user)):
     """
     게시판 URL을 직접 입력하여 스팸을 즉시 스캔합니다 (임시/테스트용).
     """
-    logger.info(f"[API SPAM] 즉시 스캔 요청: {request.board_url}")
+    logger.info(f"[API SPAM] 즉시 스캔 요청: {request.board_url} (by {current_user.email})")
     
     # 임시 config 객체 생성
     class TempConfig:
@@ -60,7 +61,7 @@ def scan_board(request: SpamScanRequest):
 
 
 @router.post("/classify")
-def classify_posts(request: SpamClassifyRequest):
+def classify_posts(request: SpamClassifyRequest, current_user: models.User = Depends(get_current_user)):
     """
     게시물 목록을 직접 넣어서 AI 스팸 분류 결과를 받습니다.
     """
@@ -70,21 +71,36 @@ def classify_posts(request: SpamClassifyRequest):
 
 
 @router.get("/configs/{site_id}")
-def get_spam_configs(site_id: int, db: Session = Depends(get_db)):
+def get_spam_configs(site_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """특정 사이트의 스팸 설정 목록 조회"""
-    configs = db.query(SpamConfig).filter(SpamConfig.site_id == site_id).all()
+    # 권한 확인
+    site_query = db.query(models.Site).filter(models.Site.id == site_id)
+    if current_user.role != models.UserRole.SUPERADMIN:
+        site_query = site_query.join(models.Organization).join(models.OrganizationMember).filter(
+            models.OrganizationMember.user_id == current_user.id
+        )
+    
+    if not site_query.first():
+        raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
+
+    configs = db.query(models.SpamConfig).filter(models.SpamConfig.site_id == site_id).all()
     return configs
 
 
 @router.post("/configs")
-def create_spam_config(config: SpamConfigCreate, db: Session = Depends(get_db)):
+def create_spam_config(config: SpamConfigCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """스팸 설정 생성"""
-    # 사이트 존재 여부 확인
-    site = db.query(Site).filter(Site.id == config.site_id).first()
-    if not site:
-        raise HTTPException(status_code=404, detail="사이트를 찾을 수 없습니다")
+    # 사이트 권한 확인
+    site_query = db.query(models.Site).filter(models.Site.id == config.site_id)
+    if current_user.role != models.UserRole.SUPERADMIN:
+        site_query = site_query.join(models.Organization).join(models.OrganizationMember).filter(
+            models.OrganizationMember.user_id == current_user.id
+        )
     
-    db_config = SpamConfig(**config.model_dump())
+    if not site_query.first():
+        raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
+    
+    db_config = models.SpamConfig(**config.model_dump())
     db.add(db_config)
     db.commit()
     db.refresh(db_config)
@@ -92,22 +108,42 @@ def create_spam_config(config: SpamConfigCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/configs/{config_id}/run")
-def run_spam_config(config_id: int, db: Session = Depends(get_db)):
+def run_spam_config(config_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """특정 스팸 설정으로 즉시 스팸 헌터 실행"""
-    config = db.query(SpamConfig).filter(SpamConfig.id == config_id).first()
+    config = db.query(models.SpamConfig).filter(models.SpamConfig.id == config_id).first()
     if not config:
         raise HTTPException(status_code=404, detail="스팸 설정을 찾을 수 없습니다")
+    
+    # 사이트 권한 확인
+    site_query = db.query(models.Site).filter(models.Site.id == config.site_id)
+    if current_user.role != models.UserRole.SUPERADMIN:
+        site_query = site_query.join(models.Organization).join(models.OrganizationMember).filter(
+            models.OrganizationMember.user_id == current_user.id
+        )
+    
+    if not site_query.first():
+        raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
     
     result = run_ai_spam_hunter(db, config)
     return result
 
 
 @router.delete("/configs/{config_id}")
-def delete_spam_config(config_id: int, db: Session = Depends(get_db)):
+def delete_spam_config(config_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """스팸 설정 삭제"""
-    config = db.query(SpamConfig).filter(SpamConfig.id == config_id).first()
+    config = db.query(models.SpamConfig).filter(models.SpamConfig.id == config_id).first()
     if not config:
         raise HTTPException(status_code=404, detail="스팸 설정을 찾을 수 없습니다")
+    
+    # 사이트 권한 확인
+    site_query = db.query(models.Site).filter(models.Site.id == config.site_id)
+    if current_user.role != models.UserRole.SUPERADMIN:
+        site_query = site_query.join(models.Organization).join(models.OrganizationMember).filter(
+            models.OrganizationMember.user_id == current_user.id
+        )
+    
+    if not site_query.first():
+        raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
     
     db.delete(config)
     db.commit()

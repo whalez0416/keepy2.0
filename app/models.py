@@ -11,7 +11,7 @@ class UserRole(enum.Enum):
 class MembershipRole(enum.Enum):
     OWNER = "owner"
     ADMIN = "admin"
-    MEMBER = "member"
+    EDITOR = "editor"
     VIEWER = "viewer"
 
 class User(Base):
@@ -20,42 +20,78 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    full_name = Column(String, nullable=True)
+    phone_number = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
     role = Column(Enum(UserRole), default=UserRole.USER)
     is_active = Column(Boolean, default=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    memberships = relationship("Membership", back_populates="user")
+    # Relationships
+    org_memberships = relationship("OrganizationMember", back_populates="user", cascade="all, delete-orphan")
 
-class Membership(Base):
-    __tablename__ = "memberships"
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    slug = Column(String, unique=True, index=True, nullable=False) # URL용 (예: min-hospital)
+    logo_url = Column(String, nullable=True)
+    billing_email = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Billing & Subscription
+    plan = Column(String, default="starter") # starter, pro, enterprise
+    subscription_status = Column(String, default="active") # active, past_due, canceled
+    subscription_period_end = Column(DateTime(timezone=True), nullable=True)
+    stripe_customer_id = Column(String, nullable=True)
+    stripe_subscription_id = Column(String, nullable=True)
+
+    # Relationships
+    members = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")
+    sites = relationship("Site", back_populates="organization", cascade="all, delete-orphan")
+    audit_logs = relationship("AuditLog", back_populates="organization", cascade="all, delete-orphan")
+
+class OrganizationMember(Base):
+    __tablename__ = "organization_members"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    site_id = Column(Integer, ForeignKey("sites.id"))
-    role = Column(Enum(MembershipRole), default=MembershipRole.MEMBER)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    org_id = Column(Integer, ForeignKey("organizations.id"))
+    role = Column(Enum(MembershipRole), default=MembershipRole.VIEWER)
+    joined_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    user = relationship("User", back_populates="memberships")
-    site = relationship("Site", back_populates="memberships")
+    user = relationship("User", back_populates="org_memberships")
+    organization = relationship("Organization", back_populates="members")
 
 
 class Site(Base):
     __tablename__ = "sites"
 
     id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"))
     site_name = Column(String, nullable=False)
-    hospital_name = Column(String, nullable=True) # 병원 그룹화용
+    hospital_name = Column(String, nullable=True) # 지점 구분용 (예: 강남점, 신촌점)
     homepage_url = Column(String, nullable=False)
     check_interval_minutes = Column(Integer, default=5)
     extra_steps_json = Column(Text, nullable=True)
+    baseline_screenshot_path = Column(String, nullable=True) # 시각적 변조 탐지용 기준 이미지
+    emergency_mode_active = Column(Boolean, default=False) # 긴급 안내 배너 활성화 여부
+    emergency_message = Column(String, nullable=True) # 긴급 안내 메시지
+    admin_path = Column(String, default="/admin") # 관리자 페이지 경로
+    whitelisted_ips = Column(Text, nullable=True) # 허용된 IP 목록 (쉼표 구분)
     
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    memberships = relationship("Membership", back_populates="site")
+    # Relationships
+    organization = relationship("Organization", back_populates="sites")
     form_configs = relationship("FormConfig", back_populates="site", cascade="all, delete-orphan")
     spam_configs = relationship("SpamConfig", back_populates="site")
+    contact_configs = relationship("ContactConfig", back_populates="site", cascade="all, delete-orphan")
 
 class FormConfig(Base):
     __tablename__ = "form_configs"
@@ -96,6 +132,26 @@ class SpamConfig(Base):
 
     site = relationship("Site", back_populates="spam_configs")
 
+class ContactConfig(Base):
+    __tablename__ = "contact_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    site_id = Column(Integer, ForeignKey("sites.id"))
+    
+    # Expected values
+    expected_phone = Column(String, nullable=True)
+    expected_kakao_url = Column(String, nullable=True)
+    
+    # Custom Selectors (optional, if defaults don't work)
+    phone_selector = Column(String, nullable=True) 
+    kakao_selector = Column(String, nullable=True)
+    
+    is_active = Column(Boolean, default=True)
+    last_checked_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    site = relationship("Site", back_populates="contact_configs")
+
 class Log(Base):
     __tablename__ = "logs"
 
@@ -120,3 +176,18 @@ class Alert(Base):
     sent_at = Column(DateTime(timezone=True), nullable=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True) # 시스템 작업일 경우 null
+    action = Column(String, nullable=False) # 예: CREATE_SITE, UPDATE_FORM, LOGIN
+    target_type = Column(String) # Site, FormConfig, User 등
+    target_id = Column(Integer)
+    details = Column(Text, nullable=True) # JSON 또는 설명
+    ip_address = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    organization = relationship("Organization", back_populates="audit_logs")

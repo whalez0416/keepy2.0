@@ -123,8 +123,10 @@ def check_form(db: Session, form_config: FormConfig):
             content = page.content()
             
             # 스크린샷 저장
+            screenshot_dir = os.path.join("app", "static", "screenshots")
+            os.makedirs(screenshot_dir, exist_ok=True)
             screenshot_filename = f"site_{site.id}_form_{form_config.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-            screenshot_path = os.path.join("app", "static", "screenshots", screenshot_filename)
+            screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
             page.screenshot(path=screenshot_path)
             db_screenshot_path = f"screenshots/{screenshot_filename}"
 

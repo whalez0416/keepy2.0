@@ -9,10 +9,15 @@ import {
   Save,
   Key,
   Smartphone,
-  Globe
+  Globe,
+  LogOut
 } from 'lucide-react';
 
-const SettingsView: React.FC = () => {
+interface SettingsViewProps {
+  onLogout?: () => void;
+}
+
+const SettingsView: React.FC<SettingsViewProps> = ({ onLogout }) => {
   const [activeSection, setActiveSection] = useState<'profile' | 'notifications' | 'security' | 'system'>('profile');
 
   const sections = [
@@ -20,6 +25,7 @@ const SettingsView: React.FC = () => {
     { id: 'notifications', label: '알림 채널', icon: Bell },
     { id: 'security', label: '보안 및 인증', icon: Shield },
     { id: 'system', label: '시스템 환경', icon: Database },
+    { id: 'logout', label: '로그아웃', icon: LogOut, mobileOnly: true },
   ] as const;
 
   return (
@@ -37,10 +43,19 @@ const SettingsView: React.FC = () => {
             return (
               <button
                 key={section.id}
-                onClick={() => setActiveSection(section.id)}
+                onClick={() => {
+                  if (section.id === 'logout') {
+                    console.log("Settings logout initiated");
+                    onLogout?.();
+                  } else {
+                    setActiveSection(section.id as any);
+                  }
+                }}
                 className={`flex-1 lg:flex-none flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                   activeSection === section.id 
                     ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                    : section.id === 'logout'
+                    ? 'text-red-400 hover:bg-red-500/10'
                     : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                 }`}
               >

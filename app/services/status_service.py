@@ -21,7 +21,7 @@ def get_site_status(db: Session, site: Site):
     recent_alert = db.query(Alert).filter(
         Alert.site_id == site.id,
         Alert.created_at >= since,
-        Alert.level == "danger"
+        Alert.alert_level == "danger"
     ).first()
     
     if recent_alert:
@@ -30,7 +30,7 @@ def get_site_status(db: Session, site: Site):
     # 주의 판단: 최근 warning 로그가 있는지 확인
     recent_warning = db.query(Log).filter(
         Log.site_id == site.id,
-        Log.created_at >= since,
+        Log.checked_at >= since,
         Log.status == "warning"
     ).first()
     
@@ -42,14 +42,14 @@ def get_site_status(db: Session, site: Site):
 def get_site_summary(db: Session, site: Site):
     status_text, status_color = get_site_status(db, site)
     
-    last_log = db.query(Log).filter(Log.site_id == site.id).order_by(Log.created_at.desc()).first()
-    last_check_time = last_log.created_at if last_log else None
+    last_log = db.query(Log).filter(Log.site_id == site.id).order_by(Log.checked_at.desc()).first()
+    last_check_time = last_log.checked_at if last_log else None
     
     last_success = db.query(Log).filter(
         Log.site_id == site.id, 
         Log.status == "success"
-    ).order_by(Log.created_at.desc()).first()
-    last_success_time = last_success.created_at if last_success else None
+    ).order_by(Log.checked_at.desc()).first()
+    last_success_time = last_success.checked_at if last_success else None
     
     return {
         "id": site.id,

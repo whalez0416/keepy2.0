@@ -10,9 +10,19 @@ router = APIRouter(tags=["sites"])
 
 @router.post("/", response_model=schemas.Site)
 def create_site(site: schemas.SiteCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    # Site 데이터 추출 (form_configs, spam_configs 제외)
+    # 조직 결정 로직
+    if current_user.role == models.UserRole.SUPERADMIN and site.org_id:
+        org_id = site.org_id
+    else:
+        # 일반 유저는 자신이 속한 조직으로 강제
+        membership = db.query(models.OrganizationMember).filter(models.OrganizationMember.user_id == current_user.id).first()
+        if not membership:
+            raise HTTPException(status_code=403, detail="사용자가 속한 조직이 없습니다.")
+        org_id = membership.org_id
+    
+    # Site 데이터 추출
     site_data = site.model_dump(exclude={"form_configs", "spam_configs"})
-    db_site = models.Site(**site_data)
+    db_site = models.Site(**site_data, org_id=org_id)
     db.add(db_site)
     db.commit()
     db.refresh(db_site)
@@ -32,15 +42,6 @@ def create_site(site: schemas.SiteCreate, db: Session = Depends(get_db), current
     db.commit()
     db.refresh(db_site)
     
-    # 생성자를 자동으로 OWNER 권한의 멤버로 등록
-    membership = models.Membership(
-        user_id=current_user.id,
-        site_id=db_site.id,
-        role=models.MembershipRole.OWNER
-    )
-    db.add(membership)
-    db.commit()
-    
     # 스케줄러 작업 등록/업데이트
     update_site_jobs(db_site)
     return db_site
@@ -50,15 +51,15 @@ def list_sites(db: Session = Depends(get_db), current_user: models.User = Depend
     if current_user.role == models.UserRole.SUPERADMIN:
         return db.query(models.Site).all()
     
-    # 사용자가 속한 사이트만 필터링
-    return db.query(models.Site).join(models.Membership).filter(models.Membership.user_id == current_user.id).all()
+    # 사용자가 속한 조직들의 모든 사이트 조회
+    return db.query(models.Site).join(models.Organization).join(models.OrganizationMember).filter(models.OrganizationMember.user_id == current_user.id).all()
 
 @router.get("/{site_id}", response_model=schemas.Site)
 def get_site(site_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     query = db.query(models.Site).filter(models.Site.id == site_id)
     
     if current_user.role != models.UserRole.SUPERADMIN:
-        query = query.join(models.Membership).filter(models.Membership.user_id == current_user.id)
+        query = query.join(models.Organization).join(models.OrganizationMember).filter(models.OrganizationMember.user_id == current_user.id)
         
     site = query.first()
     if not site:
@@ -70,24 +71,29 @@ def update_site(site_id: int, site_update: schemas.SiteUpdate, db: Session = Dep
     query = db.query(models.Site).filter(models.Site.id == site_id)
     
     if current_user.role != models.UserRole.SUPERADMIN:
-        # 권한 확인: ADMIN 이상만 수정 가능하게 할 수도 있음 (일단은 멤버면 가능하게)
-        query = query.join(models.Membership).filter(models.Membership.user_id == current_user.id)
+        query = query.join(models.Organization).join(models.OrganizationMember).filter(models.OrganizationMember.user_id == current_user.id)
         
     db_site = query.first()
     if not db_site:
         raise HTTPException(status_code=404, detail="Site not found or access denied")
         
-    for var, value in site_update.model_dump(exclude_unset=True, exclude={"form_configs", "spam_configs"}).items():
+    update_data = site_update.model_dump(exclude_unset=True, exclude={"form_configs", "spam_configs"})
+    
+    # Superadmin만 조직 변경 가능
+    if "org_id" in update_data and current_user.role != models.UserRole.SUPERADMIN:
+        del update_data["org_id"]
+
+    for var, value in update_data.items():
         setattr(db_site, var, value)
     
-    # 폼 설정 업데이트 (기존 것 삭제 후 재구성)
+    # 폼 설정 업데이트
     if site_update.form_configs is not None:
         db.query(models.FormConfig).filter(models.FormConfig.site_id == db_site.id).delete()
         for form in site_update.form_configs:
             db_form = models.FormConfig(**form.model_dump(), site_id=db_site.id)
             db.add(db_form)
 
-    # 스팸 설정 업데이트 (기존 것 삭제 후 재구성)
+    # 스팸 설정 업데이트
     if site_update.spam_configs is not None:
         db.query(models.SpamConfig).filter(models.SpamConfig.site_id == db_site.id).delete()
         for spam in site_update.spam_configs:
@@ -96,7 +102,6 @@ def update_site(site_id: int, site_update: schemas.SiteUpdate, db: Session = Dep
         
     db.commit()
     db.refresh(db_site)
-    # 스케줄러와 동기화
     update_site_jobs(db_site)
     return db_site
 
@@ -105,7 +110,7 @@ def deactivate_site(site_id: int, db: Session = Depends(get_db), current_user: m
     query = db.query(models.Site).filter(models.Site.id == site_id)
     
     if current_user.role != models.UserRole.SUPERADMIN:
-        query = query.join(models.Membership).filter(models.Membership.user_id == current_user.id)
+        query = query.join(models.Organization).join(models.OrganizationMember).filter(models.OrganizationMember.user_id == current_user.id)
         
     db_site = query.first()
     if not db_site:
@@ -113,6 +118,19 @@ def deactivate_site(site_id: int, db: Session = Depends(get_db), current_user: m
     
     db_site.is_active = False
     db.commit()
-    # 스케줄러에서 제거
     remove_site_jobs(site_id)
     return {"status": "deactivated"}
+
+@router.get("/public/{site_id}/banner")
+def get_public_banner_status(site_id: int, db: Session = Depends(get_db)):
+    """
+    고객사 홈페이지에 심긴 스크립트가 호출하는 공개 엔드포인트
+    """
+    site = db.query(models.Site).filter(models.Site.id == site_id, models.Site.is_active == True).first()
+    if not site:
+        return {"active": False}
+    
+    return {
+        "active": site.emergency_mode_active,
+        "message": site.emergency_message or "현재 시스템 점검 중입니다. 서비스 이용에 불편을 드려 죄송합니다."
+    }

@@ -15,7 +15,11 @@ import {
 import { sitesApi, Site } from '../lib/api';
 import SiteConfigModal from '../components/SiteConfigModal';
 
-const SiteListView: React.FC = () => {
+interface SiteListViewProps {
+  selectedOrgId?: number | 'all';
+}
+
+const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) => {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,7 +32,11 @@ const SiteListView: React.FC = () => {
     try {
       setLoading(true);
       const res = await sitesApi.list();
-      setSites(res.data);
+      let fetchedSites = res.data;
+      if (selectedOrgId !== 'all') {
+        fetchedSites = fetchedSites.filter(s => s.org_id === selectedOrgId);
+      }
+      setSites(fetchedSites);
     } catch (error) {
       console.error('Failed to fetch sites:', error);
     } finally {
@@ -64,17 +72,19 @@ const SiteListView: React.FC = () => {
     <div className="p-8 space-y-8 animate-in slide-up duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">병원 관리</h2>
-          <p className="text-slate-400 mt-1 font-medium">모니터링 대상 병원 및 설정을 관리합니다.</p>
+          <h2 className="text-3xl font-bold tracking-tight">
+            {selectedOrgId === 'all' ? '병원 관리' : `${sites[0]?.hospital_name || '병원'} 관리`}
+          </h2>
+          <p className="text-slate-400 mt-1 font-medium">
+            {selectedOrgId === 'all' ? '모니터링 대상 병원 및 설정을 관리합니다.' : '병원의 모니터링 임계값 및 탐색기 설정을 최적화합니다.'}
+          </p>
         </div>
-        {isSuperAdmin && (
-          <button 
-            onClick={handleAdd}
-            className="bg-emerald-500 hover:bg-emerald-600 px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
-          >
-            <Plus size={20} /> 신규 병원 등록
-          </button>
-        )}
+        <button 
+          onClick={handleAdd}
+          className="bg-emerald-500 hover:bg-emerald-600 px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
+        >
+          <Plus size={20} /> {sites.length === 0 ? '첫 병원 등록하기' : '신규 병원 등록'}
+        </button>
       </div>
 
       {/* Filters & Search */}

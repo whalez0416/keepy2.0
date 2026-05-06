@@ -4,6 +4,10 @@ from ..models import Site, FormConfig
 from .homepage_checker import check_homepage
 from .form_checker import check_form
 from .spam_hunter import run_spam_hunter
+from .contact_checker import check_contact
+from .ssl_service import check_and_renew_ssl
+from .visual_checker import check_visual_defacement
+from .admin_watcher import check_admin_exposure
 from .alert_service import handle_check_result
 from ..db import SessionLocal
 from ..utils.logger import get_logger
@@ -33,6 +37,22 @@ def run_site_check(site_id: int, check_type: str, extra_id: int = None):
         elif check_type == "spam":
             for config in site.spam_configs:
                 run_spam_hunter(db, config)
+        
+        elif check_type == "contact":
+            for config in site.contact_configs:
+                if config.is_active:
+                    log = check_contact(db, config)
+                    if log:
+                        handle_check_result(db, site, "contact_hijack", log.status, log.fail_reason)
+        
+        elif check_type == "ssl_renewal":
+            check_and_renew_ssl(db, site)
+            
+        elif check_type == "visual":
+            check_visual_defacement(db, site)
+            
+        elif check_type == "admin_watch":
+            check_admin_exposure(db, site)
             
     except Exception as e:
         logger.error(f"예약된 점검 실행 중 오류 발생: {str(e)}")
@@ -75,6 +95,45 @@ def update_site_jobs(site: Site):
             args=[site.id, "spam"],
             id=f"site_{site.id}_spam"
         )
+    
+    # 연락처 변조 체크 작업 추가 (기본 1시간)
+    if site.contact_configs:
+        scheduler.add_job(
+            run_site_check,
+            'interval',
+            minutes=60,
+            args=[site.id, "contact"],
+            id=f"site_{site.id}_contact"
+        )
+    
+    # SSL 자동 연장 체크 (매일 새벽 3시)
+    scheduler.add_job(
+        run_site_check,
+        'cron',
+        hour=3,
+        minute=0,
+        args=[site.id, "ssl_renewal"],
+        id=f"site_{site.id}_ssl_renewal"
+    )
+    
+    # 비주얼 변조 체크 (매일 새벽 4시 - 무거운 작업이므로 빈도 낮게)
+    scheduler.add_job(
+        run_site_check,
+        'cron',
+        hour=4,
+        minute=0,
+        args=[site.id, "visual"],
+        id=f"site_{site.id}_visual"
+    )
+    
+    # 관리자 페이지 감시 (6시간마다)
+    scheduler.add_job(
+        run_site_check,
+        'interval',
+        hours=6,
+        args=[site.id, "admin_watch"],
+        id=f"site_{site.id}_admin_watch"
+    )
     
     logger.debug(f"사이트 작업 업데이트 완료: site_id={site.id}")
 

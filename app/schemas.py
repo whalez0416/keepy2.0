@@ -8,6 +8,13 @@ class SiteBase(BaseModel):
     homepage_url: str
     check_interval_minutes: int = 5
     extra_steps_json: Optional[str] = None
+    baseline_screenshot_path: Optional[str] = None
+    emergency_mode_active: bool = False
+    emergency_message: Optional[str] = None
+    admin_path: Optional[str] = "/admin"
+    whitelisted_ips: Optional[str] = None
+    expected_phone: Optional[str] = None
+    expected_kakao_url: Optional[str] = None
     is_active: bool = True
 
 class FormConfigBase(BaseModel):
@@ -53,6 +60,7 @@ class SpamConfig(SpamConfigBase):
         from_attributes = True
 
 class SiteCreate(SiteBase):
+    org_id: Optional[int] = None
     form_configs: Optional[List[FormConfigCreate]] = []
     spam_configs: Optional[List[SpamConfigBase]] = []
 
@@ -62,6 +70,14 @@ class SiteUpdate(BaseModel):
     check_interval_minutes: Optional[int] = None
     extra_steps_json: Optional[str] = None
     is_active: Optional[bool] = None
+    org_id: Optional[int] = None
+    baseline_screenshot_path: Optional[str] = None
+    emergency_mode_active: Optional[bool] = None
+    emergency_message: Optional[str] = None
+    admin_path: Optional[str] = None
+    whitelisted_ips: Optional[str] = None
+    expected_phone: Optional[str] = None
+    expected_kakao_url: Optional[str] = None
     form_configs: Optional[List[FormConfigCreate]] = None
     spam_configs: Optional[List[SpamConfigBase]] = None
 
@@ -115,20 +131,65 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    avatar_url: Optional[str] = None
     is_active: bool
+    last_login_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
 
-class MembershipBase(BaseModel):
+class OrganizationBase(BaseModel):
+    name: str
+    slug: str
+    logo_url: Optional[str] = None
+    billing_email: Optional[str] = None
+
+class OrganizationCreate(OrganizationBase):
+    pass
+
+class Organization(OrganizationBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+    plan: str
+    subscription_status: str
+    subscription_period_end: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class OrganizationMemberBase(BaseModel):
     user_id: int
-    site_id: int
+    org_id: int
     role: str
 
-class Membership(MembershipBase):
+class OrganizationMember(OrganizationMemberBase):
+    id: int
+    joined_at: datetime
+    # 유저 정보를 포함하면 순환 참조 문제가 생길 수 있으므로 주의
+    # user: User 
+    # organization: Organization
+
+    class Config:
+        from_attributes = True
+
+class AuditLogBase(BaseModel):
+    org_id: int
+    user_id: Optional[int] = None
+    action: str
+    target_type: str
+    target_id: int
+    details: Optional[str] = None
+    ip_address: Optional[str] = None
+
+class AuditLog(AuditLogBase):
     id: int
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+# Removed Membership schema as it's replaced by OrganizationMember

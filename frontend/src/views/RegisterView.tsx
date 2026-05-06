@@ -5,9 +5,10 @@ import { authApi } from '../lib/api';
 interface RegisterViewProps {
   onSwitchToLogin: () => void;
   onRegisterSuccess: (email: string) => void;
+  onShowPricing: () => void;
 }
 
-const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onRegisterSuccess }) => {
+const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onRegisterSuccess, onShowPricing }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -145,12 +146,18 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, onRegister
           </form>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center flex flex-col gap-3">
           <button 
             onClick={onSwitchToLogin}
             className="text-slate-500 hover:text-emerald-400 text-sm font-bold transition-colors"
           >
             이미 계정이 있으신가요? 로그인하기
+          </button>
+          <button 
+            onClick={onShowPricing}
+            className="text-slate-400/50 hover:text-white text-xs font-bold transition-colors uppercase tracking-widest"
+          >
+            요금제 정책 확인하기
           </button>
         </div>
       </div>
