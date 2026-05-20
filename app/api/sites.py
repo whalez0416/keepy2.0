@@ -20,12 +20,22 @@ def create_site(site: schemas.SiteCreate, db: Session = Depends(get_db), current
             raise HTTPException(status_code=403, detail="사용자가 속한 조직이 없습니다.")
         org_id = membership.org_id
     
-    # Site 데이터 추출
-    site_data = site.model_dump(exclude={"form_configs", "spam_configs"})
+    # Site 데이터 추출 (DB 모델에 없는 필드 제외)
+    exclude_fields = {"form_configs", "spam_configs", "org_id", "expected_phone", "expected_kakao_url"}
+    site_data = site.model_dump(exclude=exclude_fields)
     db_site = models.Site(**site_data, org_id=org_id)
     db.add(db_site)
     db.commit()
     db.refresh(db_site)
+    
+    # 연락처 감시 설정 추가 (SiteBase에 포함된 필드 처리)
+    if site.expected_phone or site.expected_kakao_url:
+        db_contact = models.ContactConfig(
+            site_id=db_site.id,
+            expected_phone=site.expected_phone,
+            expected_kakao_url=site.expected_kakao_url
+        )
+        db.add(db_contact)
     
     # 폼 설정들 추가
     if site.form_configs:

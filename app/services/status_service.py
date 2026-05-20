@@ -55,7 +55,7 @@ def get_site_summary(db: Session, site: Site):
         "id": site.id,
         "site_name": site.site_name,
         "homepage_url": site.homepage_url,
-        "form_url": site.form_url,
+        "form_url": site.form_configs[0].form_url if site.form_configs else None,
         "status_text": status_text,
         "status_color": status_color,
         "last_check_time": last_check_time,

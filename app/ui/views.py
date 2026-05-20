@@ -143,11 +143,23 @@ def toggle_site(site_id: int, db: Session = Depends(get_db)):
     return RedirectResponse(url="/", status_code=303)
 
 @router.post("/sites/{site_id}/check")
-def manual_check_ui(site_id: int):
+def manual_check_ui(site_id: int, db: Session = Depends(get_db)):
     logger.debug(f"[DEBUG] manual check triggered from UI: site_id={site_id}")
-    # Run homepage and form check manually
-    run_site_check(site_id, "homepage")
-    run_site_check(site_id, "form")
+    site = db.query(models.Site).get(site_id)
+    if site:
+        # Run homepage check
+        run_site_check(site_id, "homepage")
+        
+        # Run form checks for each config
+        for form in site.form_configs:
+            run_site_check(site_id, "form", form.id)
+            
+        # Run contact checks
+        run_site_check(site_id, "contact")
+        
+        # Run visual defacement checks
+        run_site_check(site_id, "visual")
+        
     return RedirectResponse(url="/", status_code=303)
 
 @router.get("/logs", response_class=HTMLResponse)

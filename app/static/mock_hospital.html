@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>강남아이안과 | 프리미엄 시력교정 센터</title>
+    <!-- Outfit & Noto Sans KR Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0284c7;
+            --primary-hover: #0369a1;
+            --secondary: #0f172a;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg-base: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', 'Outfit', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            line-height: 1.6;
+            transition: all 0.5s ease;
+            position: relative;
+        }
+
+        /* Defacement State CSS class */
+        body.hacked {
+            background-color: #7f1d1d !important;
+            background-image: radial-gradient(circle, #7f1d1d 20%, #450a0a 80%) !important;
+            color: #f87171 !important;
+        }
+
+        body.hacked .premium-header, 
+        body.hacked .hero-section, 
+        body.hacked .booking-card,
+        body.hacked .info-section {
+            filter: grayscale(1) contrast(1.5) invert(0.9);
+            border: 2px solid var(--danger);
+        }
+
+        body.hacked .hacker-overlay {
+            display: flex !important;
+        }
+
+        /* Hacker Defacement Overlay */
+        .hacker-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 99999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', Courier, monospace;
+            color: #38bdf8;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .hacker-overlay h1 {
+            font-size: 3rem;
+            color: #ef4444;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+            animation: blink 1s infinite alternate;
+        }
+
+        @keyframes blink {
+            0% { opacity: 0.2; }
+            100% { opacity: 1; }
+        }
+
+        /* Normal Header Styling */
+        .premium-header {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            padding: 80px 24px 100px 24px;
+            text-align: center;
+            border-bottom: 1px solid #bae6fd;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 50%;
+            height: 80%;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .hero-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .tagline {
+            background-color: rgba(2, 132, 199, 0.1);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--secondary);
+            line-height: 1.25;
+            margin-bottom: 24px;
+            letter-spacing: -1px;
+        }
+
+        .hero-title span {
+            color: var(--primary);
+        }
+
+        .hero-subtitle {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Main Container layout */
+        .main-layout {
+            max-width: 1200px;
+            margin: -50px auto 100px auto;
+            padding: 0 24px;
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: 40px;
+            position: relative;
+            z-index: 10;
+        }
+
+        @media (max-width: 968px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                margin-top: 20px;
+            }
+        }
+
+        /* Info column */
+        .info-section {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 24px;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 600px) {
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .feature-card {
+            border: 1px solid #f1f5f9;
+            background-color: #f8fafc;
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+            border-color: #e2e8f0;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background-color: rgba(2, 132, 199, 0.1);
+            color: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+        }
+
+        .feature-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .feature-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Contact Details section (Subject to Hijacking check!) */
+        .contact-details {
+            border-top: 1px solid #f1f5f9;
+            padding-top: 32px;
+        }
+
+        .contact-card {
+            background-color: rgba(2, 132, 199, 0.03);
+            border: 1px dashed rgba(2, 132, 199, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .contact-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .contact-icon {
+            font-size: 1.4rem;
+        }
+
+        .contact-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .contact-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .contact-link {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .contact-link:hover {
+            color: var(--primary);
+        }
+
+        /* Booking Form Card */
+        .booking-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            align-self: start;
+            position: sticky;
+            top: 100px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            background-color: #ffffff;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: inherit;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+        }
+
+        .agreement-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+            margin: 24px 0;
+            user-select: none;
+        }
+
+        .agreement-container input {
+            margin-top: 4px;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
+
+        .agreement-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .submit-button {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.2), 0 2px 4px -1px rgba(2, 132, 199, 0.1);
+        }
+
+        .submit-button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(2, 132, 199, 0.3);
+        }
+
+        .submit-button:active {
+            transform: translateY(0);
+        }
+
+        /* Success & Error message boxes */
+        .status-box {
+            display: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 20px;
+            line-height: 1.4;
+            border: 1px solid transparent;
+        }
+
+        .status-box.success {
+            display: block;
+            background-color: #ecfdf5;
+            border-color: #a7f3d0;
+            color: #065f46;
+        }
+
+        .status-box.error {
+            display: block;
+            background-color: #fef2f2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+
+        /* Floating Chaos Simulator Panel (Glassmorphism Control Console) */
+        .simulator-panel {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 340px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 24px;
+            color: #f8fafc;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .simulator-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .simulator-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .simulator-subtitle {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .simulator-toggle-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+
+        .scenario-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .scenario-btn {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+            padding: 10px 14px;
+            border-radius: 10px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s;
+        }
+
+        .scenario-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .scenario-btn.active {
+            background: rgba(2, 132, 199, 0.2);
+            border-color: #38bdf8;
+            color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50px;
+            background-color: var(--success);
+            display: inline-block;
+        }
+
+        .status-dot.active {
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            100% { transform: scale(1.2); opacity: 1; }
+        }
+
+        .scenario-btn.active .status-dot {
+            background-color: #38bdf8;
+        }
+
+        .scenario-btn.active.hijacked .status-dot {
+            background-color: var(--danger);
+        }
+
+        .scenario-btn.active.defaced .status-dot {
+            background-color: var(--danger);
+        }
+
+        .scenario-btn.active.form-failed .status-dot {
+            background-color: var(--danger);
+        }
+
+        .scenario-btn.active.latency-failed .status-dot {
+            background-color: var(--accent);
+        }
+
+        .banner-installer-tip {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.7rem;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+
+        .code-box {
+            background-color: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            color: #cbd5e1;
+            margin-top: 6px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hacker Defacement Screen Overlay (Simulated) -->
+    <div class="hacker-overlay" id="hacker-overlay">
+        <h1>☣️ SYSTEM COMPROMISED ☣️</h1>
+        <p style="font-size: 1.25rem; margin-bottom: 20px;">Hacked by anonymous spammers</p>
+        <p style="color: #94a3b8; max-width: 600px; margin-bottom: 30px;">
+            Your booking details are now intercepted. Send 10 BTC to receive control. All contact details have been successfully redirected.
+        </p>
+        <div style="background-color: #1e293b; padding: 15px 30px; border-radius: 10px; border: 1px solid #ef4444; font-size: 0.9rem;">
+            [⚠️ Keepy Alert System will catch this layout defacement instantly!]
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="premium-header">
+        <div class="header-container">
+            <a href="#" class="logo">
+                <span>✦</span> 강남아이안과
+            </a>
+            <ul class="nav-links">
+                <li><a href="#">안과소개</a></li>
+                <li><a href="#">스마일라식</a></li>
+                <li><a href="#">노안백내장</a></li>
+                <li><a href="#">상담예약</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Hero Area -->
+    <section class="hero-section">
+        <div class="hero-container">
+            <span class="tagline">PREMIUM VISION CLINIC</span>
+            <h1 class="hero-title">밝은 세상으로의 초대,<br><span>강남아이안과</span> 시력교정 센터</h1>
+            <p class="hero-subtitle">최첨단 2026년 레이저 장비와 대한민국 탑클래스 의료진이 환자 맞춤형 정밀 시력 교정을 약속 드립니다.</p>
+        </div>
+    </section>
+
+    <!-- Layout Grid -->
+    <main class="main-layout">
+        
+        <!-- Info Column -->
+        <section class="info-section">
+            <h2 class="section-title">
+                <span>✓</span> 왜 강남아이안과인가요?
+            </h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">👁️</div>
+                    <h3 class="feature-title">스마일라식 전문의</h3>
+                    <p class="feature-desc">10,000건 이상의 수술 집도 경험을 지닌 숙련된 전문의가 책임 집도합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">초정밀 인공지능 검사</h3>
+                    <p class="feature-desc">70여 가지 항목의 다차원 검사를 거쳐 환자 눈에 딱 맞는 수술을 선택합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3 class="feature-title">평생 안심 케어</h3>
+                    <p class="feature-desc">수술 후에도 1:1 전담 평생 주치의 제도로 시력을 안전하게 보호합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🏥</div>
+                    <h3 class="feature-title">대학병원급 클린룸</h3>
+                    <p class="feature-desc">무균 에어 샤워 및 항온항습 시스템으로 감염율 0.00%를 유지합니다.</p>
+                </div>
+            </div>
+
+            <!-- Contact details to hijack -->
+            <div class="contact-details">
+                <h3 class="section-title" style="font-size: 1.25rem;">
+                    <span>📞</span> 실시간 다이렉트 문의
+                </h3>
+                
+                <div class="contact-card">
+                    <div class="contact-row">
+                        <span class="contact-icon">📱</span>
+                        <div class="contact-info">
+                            <span class="contact-label">고객 센터 전화</span>
+                            <!-- Expected Phone number: 02-1111-2222 -->
+                            <a href="tel:02-1111-2222" id="phone-link" class="contact-link">02-1111-2222</a>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-row">
+                        <span class="contact-icon">💬</span>
+                        <div class="contact-info">
+                            <span class="contact-label">카카오톡 공식 채널</span>
+                            <!-- Expected Kakao link: https://pf.kakao.com/original -->
+                            <a href="https://pf.kakao.com/original" id="kakao-link" class="contact-link">@강남아이안과 실시간 채팅</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Booking Column -->
+        <section class="booking-card" id="booking-section">
+            <h2 class="section-title" style="margin-bottom: 30px;">
+                <span>✉</span> 빠른 온라인 상담 신청
+            </h2>
+            
+            <form id="consultation-form" onsubmit="handleFormSubmit(event)">
+                <div class="form-group">
+                    <label class="form-label" for="name-input">성함</label>
+                    <input type="text" id="name-input" class="form-input" placeholder="성함을 입력해주세요" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="phone-input">연락처</label>
+                    <input type="tel" id="phone-input" class="form-input" placeholder="연락처를 입력해주세요" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="subject-input">관심 분야</label>
+                    <input type="text" id="subject-input" class="form-input" placeholder="예: 스마일라식, 라섹, 백내장 등">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="message-input">추가 문의사항</label>
+                    <textarea id="message-input" rows="4" class="form-input" placeholder="궁금하신 내용을 간단히 남겨주세요"></textarea>
+                </div>
+                
+                <label class="agreement-container">
+                    <input type="checkbox" id="agree-checkbox" required>
+                    <span class="agreement-text">
+                        개인정보 수집 및 이용에 동의합니다. (목적: 상담 예약 및 사후 관리) [필수]
+                    </span>
+                </label>
+                
+                <button type="submit" id="submit-btn" class="submit-button">상담 신청하기</button>
+            </form>
+            
+            <!-- Result Box -->
+            <div id="status-box" class="status-box"></div>
+        </section>
+    </main>
+
+    <!-- Floating Simulator Control Panel -->
+    <div class="simulator-panel">
+        <div class="simulator-header">
+            <div>
+                <div class="simulator-title">🧪 Keepy B2B Playground</div>
+                <div class="simulator-subtitle">실시간 위협 및 상태 시뮬레이터</div>
+            </div>
+            <button class="simulator-toggle-btn" id="toggle-sim" onclick="minimizeSim()">⛶</button>
+        </div>
+        
+        <div id="sim-body">
+            <div class="scenario-list">
+                <button class="scenario-btn active" id="btn-normal" onclick="setScenario('normal')">
+                    🟢 정상 작동 상태 (Normal)
+                    <span class="status-dot active"></span>
+                </button>
+                
+                <button class="scenario-btn hijacked" id="btn-hijacked" onclick="setScenario('hijacked')">
+                    🔴 연락처 변조 해킹 (Contact Hijack)
+                    <span class="status-dot"></span>
+                </button>
+                
+                <button class="scenario-btn defaced" id="btn-defaced" onclick="setScenario('defaced')">
+                    🔴 화면 레이아웃 변조 (Visual Deface)
+                    <span class="status-dot"></span>
+                </button>
+                
+                <button class="scenario-btn form-failed" id="btn-form-failed" onclick="setScenario('form-failed')">
+                    🔴 상담 예약폼 장애 (Form Failure)
+                    <span class="status-dot"></span>
+                </button>
+                
+                <button class="scenario-btn latency-failed" id="btn-latency" onclick="setScenario('latency')">
+                    🟡 페이지 지연 응답 (Slow Latency)
+                    <span class="status-dot"></span>
+                </button>
+            </div>
+            
+            <div class="banner-installer-tip">
+                <strong>💡 Keepy 스크립트 연결 완료:</strong>
+                <p style="margin-top: 4px;">본 홈페이지에는 Keepy 모니터링 태그가 주입되어 있습니다.</p>
+                <div class="code-box">
+&lt;script src="/static/keepy-banner.js" data-site-id="9"&gt;&lt;/script&gt;
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Keepy Integration Script Simulation (Site ID 9 used for Playground) -->
+    <!-- API Base is explicitly directed to the local FastAPI port 8000 -->
+    <script src="http://localhost:8000/static/keepy-banner.js" data-site-id="9" data-api-base="http://localhost:8000" id="keepy-script-loader"></script>
+
+    <script>
+        // State variables
+        let currentScenario = 'normal';
+        let isSimMinimized = false;
+
+        // Scenario controller logic
+        function setScenario(scenario) {
+            currentScenario = scenario;
+            
+            // Remove active classes
+            document.querySelectorAll('.scenario-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Remove error/normal statuses from components
+            document.body.classList.remove('hacked');
+            document.getElementById('hacker-overlay').style.display = 'none';
+            
+            // Restore Normal elements
+            const phoneLink = document.getElementById('phone-link');
+            const kakaoLink = document.getElementById('kakao-link');
+            
+            phoneLink.href = 'tel:02-1111-2222';
+            phoneLink.innerText = '02-1111-2222';
+            kakaoLink.href = 'https://pf.kakao.com/original';
+            kakaoLink.innerText = '@강남아이안과 실시간 채팅';
+            
+            // Apply Scenario Changes
+            if (scenario === 'normal') {
+                document.getElementById('btn-normal').classList.add('active');
+                console.log("[PLAYGROUND] 정상 상태 복원 완료");
+            } 
+            else if (scenario === 'hijacked') {
+                document.getElementById('btn-hijacked').classList.add('active');
+                
+                // Contact hijacking simulation: Modify phone link and Kakao link to wrong values
+                phoneLink.href = 'tel:010-9999-8888';
+                phoneLink.innerText = '010-9999-8888 (변조됨)';
+                kakaoLink.href = 'https://pf.kakao.com/hacker';
+                kakaoLink.innerText = '채팅 상담 받기 (변조됨)';
+                
+                console.log("[PLAYGROUND] 연락처 변조 완료 (Hacker redirect)");
+            } 
+            else if (scenario === 'defaced') {
+                document.getElementById('btn-defaced').classList.add('active');
+                
+                // Visual defacement simulation: apply hacked screen styles
+                document.body.classList.add('hacked');
+                document.getElementById('hacker-overlay').style.display = 'flex';
+                
+                console.log("[PLAYGROUND] 화면 변조 시뮬레이션 활성화");
+            } 
+            else if (scenario === 'form-failed') {
+                document.getElementById('btn-form-failed').classList.add('active');
+                console.log("[PLAYGROUND] 상담 예약 접수처 에러 상태 세팅");
+            } 
+            else if (scenario === 'latency') {
+                document.getElementById('btn-latency').classList.add('active');
+                console.log("[PLAYGROUND] 속도 지연 스트레스 모드 세팅");
+            }
+        }
+
+        // Form submission behavior
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submit-btn');
+            const statusBox = document.getElementById('status-box');
+            
+            submitBtn.disabled = true;
+            submitBtn.innerText = '신청 처리 중...';
+            
+            // Simulate Response Latency if enabled
+            const delayTime = (currentScenario === 'latency') ? 4000 : 1000;
+            
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerText = '상담 신청하기';
+                
+                statusBox.className = 'status-box';
+                
+                if (currentScenario === 'form-failed') {
+                    // Simulate broken system response
+                    statusBox.classList.add('error');
+                    statusBox.innerText = '죄송합니다. 서버 통신에 실패했습니다 (ERROR_CODE: 500 DB_TIMEOUT). 잠시 후 다시 시도해 주세요.';
+                    console.log("[PLAYGROUND] 상담 신청 실패!");
+                } else {
+                    // Simulate successful response (containing expected text)
+                    statusBox.classList.add('success');
+                    statusBox.innerText = '상담 예약이 성공적으로 접수되었습니다. 담당 실장이 확인 후 5분 이내에 연락 드리겠습니다.';
+                    console.log("[PLAYGROUND] 상담 신청 성공!");
+                }
+            }, delayTime);
+        }
+
+        // Minimize simulator window
+        function minimizeSim() {
+            const body = document.getElementById('sim-body');
+            const panel = document.querySelector('.simulator-panel');
+            
+            if (isSimMinimized) {
+                body.style.display = 'block';
+                panel.style.width = '340px';
+                isSimMinimized = false;
+            } else {
+                body.style.display = 'none';
+                panel.style.width = '240px';
+                isSimMinimized = true;
+            }
+        }
+
+        // Simulate page latency on initial loading if set (handled via network control)
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log("[PLAYGROUND] 강남아이안과 모의 사이트 로드 완료");
+        });
+    </script>
+</body>
+</html>

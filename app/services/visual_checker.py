@@ -6,6 +6,7 @@ from PIL import Image, ImageChops, ImageStat
 from sqlalchemy.orm import Session
 from ..models import Site, Log, Alert
 from ..utils.logger import get_logger
+from .browser_pool import browser_semaphore
 
 logger = get_logger("visual_checker")
 
@@ -28,19 +29,20 @@ def check_visual_defacement(db: Session, site: Site):
     db_current_path = f"screenshots/{current_filename}"
 
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page(viewport={'width': 1280, 'height': 800})
-            
-            # 1. 페이지 로드
-            page.goto(site.homepage_url, timeout=30000)
-            page.wait_for_load_state("networkidle")
-            # 팝업 등이 뜰 수 있으므로 잠시 대기
-            time.sleep(2)
-            
-            # 2. 스크린샷 캡처
-            page.screenshot(path=current_path)
-            browser.close()
+        with browser_semaphore:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page(viewport={'width': 1280, 'height': 800})
+                
+                # 1. 페이지 로드
+                page.goto(site.homepage_url, timeout=30000)
+                page.wait_for_load_state("networkidle")
+                # 팝업 등이 뜰 수 있으므로 잠시 대기
+                time.sleep(2)
+                
+                # 2. 스크린샷 캡처
+                page.screenshot(path=current_path)
+                browser.close()
 
         # 3. 기준 이미지와 비교
         if not site.baseline_screenshot_path:

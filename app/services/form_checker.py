@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from ..models import Site, Log, FormConfig
 from ..utils.logger import get_logger
+from .browser_pool import browser_semaphore
 
 logger = get_logger("form_checker")
 
@@ -58,87 +59,88 @@ def check_form(db: Session, form_config: FormConfig):
     db_screenshot_path = None
     
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context()
-            page = context.new_page()
-            
-            # 1. 상담 페이지 이동
-            page.goto(form_config.form_url, timeout=30000)
-            page.wait_for_load_state("networkidle")
-            
-            # 1.5. 팝업 제거
-            try:
-                page.evaluate("() => { if(typeof layer_close_all2 === 'function') layer_close_all2(); }")
-                page.evaluate("() => { document.querySelectorAll('.btn_close, .close_btn, #close, [title=\"닫기\"]').forEach(el => el.click()); }")
-                page.wait_for_timeout(1000)
-            except:
-                pass
-
-            # 1.6. 고급 액션 시퀀스 실행 (사이트 공통 설정)
-            if site.extra_steps_json:
-                logger.debug(f"[ADVANCED] 사이트 {site.id}의 고급 액션 시퀀스를 시작합니다.")
-                execute_extra_steps(page, site.extra_steps_json)
-
-            # 2. 테스트 데이터 입력
-            if form_config.name_selector:
-                page.fill(form_config.name_selector, "KEEPY_TEST")
-            
-            if form_config.phone_selector:
-                page.fill(form_config.phone_selector, "01000000000")
-            
-            if form_config.subject_selector:
-                page.fill(form_config.subject_selector, f"[KEEPY_TEST] {form_config.name} 자동 점검")
-            
-            if form_config.password_selector:
-                pass_val = form_config.password_value or "keepy1234!"
-                page.fill(form_config.password_selector, pass_val)
-
-            if form_config.agreement_selector:
+        with browser_semaphore:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context()
+                page = context.new_page()
+                
+                # 1. 상담 페이지 이동
+                page.goto(form_config.form_url, timeout=30000)
+                page.wait_for_load_state("networkidle")
+                
+                # 1.5. 팝업 제거
                 try:
-                    page.click(form_config.agreement_selector)
+                    page.evaluate("() => { if(typeof layer_close_all2 === 'function') layer_close_all2(); }")
+                    page.evaluate("() => { document.querySelectorAll('.btn_close, .close_btn, #close, [title=\"닫기\"]').forEach(el => el.click()); }")
+                    page.wait_for_timeout(1000)
                 except:
-                    page.click(form_config.agreement_selector, force=True)
+                    pass
 
-            if form_config.message_selector:
-                if "iframe" in form_config.message_selector:
-                    iframe_id = form_config.message_selector.replace("iframe", "").replace("#", "").strip()
+                # 1.6. 고급 액션 시퀀스 실행 (사이트 공통 설정)
+                if site.extra_steps_json:
+                    logger.debug(f"[ADVANCED] 사이트 {site.id}의 고급 액션 시퀀스를 시작합니다.")
+                    execute_extra_steps(page, site.extra_steps_json)
+
+                # 2. 테스트 데이터 입력
+                if form_config.name_selector:
+                    page.fill(form_config.name_selector, "KEEPY_TEST")
+                
+                if form_config.phone_selector:
+                    page.fill(form_config.phone_selector, "01000000000")
+                
+                if form_config.subject_selector:
+                    page.fill(form_config.subject_selector, f"[KEEPY_TEST] {form_config.name} 자동 점검")
+                
+                if form_config.password_selector:
+                    pass_val = form_config.password_value or "keepy1234!"
+                    page.fill(form_config.password_selector, pass_val)
+
+                if form_config.agreement_selector:
                     try:
-                        frame = page.frame_locator(f"#{iframe_id}")
-                        frame.locator("body").fill("[KEEPY_TEST] 자동 점검 메시지입니다. (Iframe)")
+                        page.click(form_config.agreement_selector)
                     except:
-                        page.fill(form_config.message_selector, "[KEEPY_TEST] 자동 점검 메시지입니다")
-                else:
-                    page.fill(form_config.message_selector, "[KEEPY_TEST] 자동 점검 메시지입니다")
-            
-            # 3. 제출 버튼 클릭
-            if form_config.submit_selector:
-                page.click(form_config.submit_selector, timeout=5000)
-            else:
-                page.keyboard.press("Enter")
-                
-            page.wait_for_timeout(3000)
-            
-            # 4. 성공 여부 판단
-            content = page.content()
-            
-            # 스크린샷 저장
-            screenshot_dir = os.path.join("app", "static", "screenshots")
-            os.makedirs(screenshot_dir, exist_ok=True)
-            screenshot_filename = f"site_{site.id}_form_{form_config.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-            screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
-            page.screenshot(path=screenshot_path)
-            db_screenshot_path = f"screenshots/{screenshot_filename}"
+                        page.click(form_config.agreement_selector, force=True)
 
-            if form_config.expected_success_text and form_config.expected_success_text in content:
-                status = "success"
-            elif "완료" in content or "성공" in content or "제출" in content or "success" in content.lower():
-                status = "success"
-            else:
-                status = "fail"
-                fail_reason = f"성공 메시지('{form_config.expected_success_text or '완료'}')를 찾을 수 없습니다"
+                if form_config.message_selector:
+                    if "iframe" in form_config.message_selector:
+                        iframe_id = form_config.message_selector.replace("iframe", "").replace("#", "").strip()
+                        try:
+                            frame = page.frame_locator(f"#{iframe_id}")
+                            frame.locator("body").fill("[KEEPY_TEST] 자동 점검 메시지입니다. (Iframe)")
+                        except:
+                            page.fill(form_config.message_selector, "[KEEPY_TEST] 자동 점검 메시지입니다")
+                    else:
+                        page.fill(form_config.message_selector, "[KEEPY_TEST] 자동 점검 메시지입니다")
                 
-            browser.close()
+                # 3. 제출 버튼 클릭
+                if form_config.submit_selector:
+                    page.click(form_config.submit_selector, timeout=5000)
+                else:
+                    page.keyboard.press("Enter")
+                    
+                page.wait_for_timeout(3000)
+                
+                # 4. 성공 여부 판단
+                content = page.content()
+                
+                # 스크린샷 저장
+                screenshot_dir = os.path.join("app", "static", "screenshots")
+                os.makedirs(screenshot_dir, exist_ok=True)
+                screenshot_filename = f"site_{site.id}_form_{form_config.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
+                page.screenshot(path=screenshot_path)
+                db_screenshot_path = f"screenshots/{screenshot_filename}"
+
+                if form_config.expected_success_text and form_config.expected_success_text in content:
+                    status = "success"
+                elif "완료" in content or "성공" in content or "제출" in content or "success" in content.lower():
+                    status = "success"
+                else:
+                    status = "fail"
+                    fail_reason = f"성공 메시지('{form_config.expected_success_text or '완료'}')를 찾을 수 없습니다"
+                    
+                browser.close()
             
         response_time = time.time() - start_time
         

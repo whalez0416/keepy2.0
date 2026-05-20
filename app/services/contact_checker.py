@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from ..models import Site, Log, ContactConfig, Alert
 from ..utils.logger import get_logger
+from .browser_pool import browser_semaphore
 import re
 
 logger = get_logger("contact_checker")
@@ -20,63 +21,64 @@ def check_contact(db: Session, contact_config: ContactConfig):
     fail_reasons = []
     
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context()
-            page = context.new_page()
-            
-            # 1. 홈페이지 이동
-            page.goto(site.homepage_url, timeout=30000)
-            page.wait_for_load_state("networkidle")
-            
-            # 2. 연락처 데이터 추출
-            
-            # (1) 전화번호 체크
-            found_phone = None
-            phone_sel = contact_config.phone_selector or 'a[href^="tel:"]'
-            try:
-                phone_element = page.query_selector(phone_sel)
-                if phone_element:
-                    href = phone_element.get_attribute("href")
-                    # 'tel:02-123-4567' -> '02-123-4567'
-                    found_phone = href.replace("tel:", "").strip()
-            except Exception as e:
-                logger.error(f"전화번호 추출 실패: {e}")
-
-            # (2) 카카오톡 링크 체크
-            found_kakao = None
-            kakao_sel = contact_config.kakao_selector or 'a[href*="kakao.com"], a[href*="pf.kakao.com"]'
-            try:
-                kakao_element = page.query_selector(kakao_sel)
-                if kakao_element:
-                    found_kakao = kakao_element.get_attribute("href").strip()
-            except Exception as e:
-                logger.error(f"카카오 링크 추출 실패: {e}")
-
-            # 3. 무결성 검증 (정규화 후 비교)
-            
-            # 전화번호 비교 (숫자만 남겨서 비교)
-            if contact_config.expected_phone:
-                expected_norm = re.sub(r'[^0-9]', '', contact_config.expected_phone)
-                found_norm = re.sub(r'[^0-9]', '', found_phone) if found_phone else ""
+        with browser_semaphore:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context()
+                page = context.new_page()
                 
-                if not found_phone:
-                    status = "fail"
-                    fail_reasons.append("전화번호 링크를 찾을 수 없습니다.")
-                elif expected_norm != found_norm:
-                    status = "fail"
-                    fail_reasons.append(f"전화번호가 변조되었습니다 (기대: {contact_config.expected_phone}, 발견: {found_phone})")
+                # 1. 홈페이지 이동
+                page.goto(site.homepage_url, timeout=30000)
+                page.wait_for_load_state("networkidle")
+                
+                # 2. 연락처 데이터 추출
+                
+                # (1) 전화번호 체크
+                found_phone = None
+                phone_sel = contact_config.phone_selector or 'a[href^="tel:"]'
+                try:
+                    phone_element = page.query_selector(phone_sel)
+                    if phone_element:
+                        href = phone_element.get_attribute("href")
+                        # 'tel:02-123-4567' -> '02-123-4567'
+                        found_phone = href.replace("tel:", "").strip()
+                except Exception as e:
+                    logger.error(f"전화번호 추출 실패: {e}")
 
-            # 카카오 링크 비교
-            if contact_config.expected_kakao_url:
-                if not found_kakao:
-                    status = "fail"
-                    fail_reasons.append("카카오톡 상담 링크를 찾을 수 없습니다.")
-                elif contact_config.expected_kakao_url not in found_kakao:
-                    status = "fail"
-                    fail_reasons.append(f"카카오톡 링크가 변조되었습니다 (기대: {contact_config.expected_kakao_url}, 발견: {found_kakao})")
+                # (2) 카카오톡 링크 체크
+                found_kakao = None
+                kakao_sel = contact_config.kakao_selector or 'a[href*="kakao.com"], a[href*="pf.kakao.com"]'
+                try:
+                    kakao_element = page.query_selector(kakao_sel)
+                    if kakao_element:
+                        found_kakao = kakao_element.get_attribute("href").strip()
+                except Exception as e:
+                    logger.error(f"카카오 링크 추출 실패: {e}")
 
-            browser.close()
+                # 3. 무결성 검증 (정규화 후 비교)
+                
+                # 전화번호 비교 (숫자만 남겨서 비교)
+                if contact_config.expected_phone:
+                    expected_norm = re.sub(r'[^0-9]', '', contact_config.expected_phone)
+                    found_norm = re.sub(r'[^0-9]', '', found_phone) if found_phone else ""
+                    
+                    if not found_phone:
+                        status = "fail"
+                        fail_reasons.append("전화번호 링크를 찾을 수 없습니다.")
+                    elif expected_norm != found_norm:
+                        status = "fail"
+                        fail_reasons.append(f"전화번호가 변조되었습니다 (기대: {contact_config.expected_phone}, 발견: {found_phone})")
+
+                # 카카오 링크 비교
+                if contact_config.expected_kakao_url:
+                    if not found_kakao:
+                        status = "fail"
+                        fail_reasons.append("카카오톡 상담 링크를 찾을 수 없습니다.")
+                    elif contact_config.expected_kakao_url not in found_kakao:
+                        status = "fail"
+                        fail_reasons.append(f"카카오톡 링크가 변조되었습니다 (기대: {contact_config.expected_kakao_url}, 발견: {found_kakao})")
+
+                browser.close()
             
         response_time = time.time() - start_time
         

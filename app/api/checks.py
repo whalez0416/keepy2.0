@@ -24,14 +24,29 @@ def run_manual_check(site_id: int, db: Session = Depends(get_db), current_user: 
     if h_log:
         handle_check_result(db, site, "homepage", h_log.status, h_log.fail_reason)
 
-    # Run form check
-    f_log = None
-    if site.form_url:
-        f_log = check_form(db, site)
+    # Run form checks
+    form_results = []
+    for f_config in site.form_configs:
+        f_log = check_form(db, f_config) 
         if f_log:
             handle_check_result(db, site, "form", f_log.status, f_log.fail_reason)
+            form_results.append({"name": f_config.name, "status": f_log.status})
+
+    # Run visual defacement check
+    from ..services.visual_checker import check_visual_defacement
+    v_log = check_visual_defacement(db, site)
+
+    # Run contact hijack check
+    from ..services.contact_checker import check_contact
+    c_results = []
+    for c_config in site.contact_configs:
+        c_log = check_contact(db, c_config)
+        if c_log:
+            c_results.append({"id": c_config.id, "status": c_log.status})
 
     return {
         "homepage": h_log.status if h_log else "skipped",
-        "form": f_log.status if f_log else "skipped"
+        "forms": form_results,
+        "visual": v_log.status if v_log else "skipped",
+        "contacts": c_results
     }

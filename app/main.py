@@ -47,6 +47,20 @@ app.include_router(views.router, tags=["Admin UI"])
 def read_root():
     return {"status": "ok", "message": "Keepy API Server is running"}
 
+@app.get("/api/test/trigger")
+def trigger_emergency():
+    from app.models import Site
+    from app.db import SessionLocal
+    db = SessionLocal()
+    site = db.query(Site).filter(Site.id == 9).first()
+    if site:
+        site.emergency_mode_active = True
+        site.emergency_message = "📢 [긴급 안내] 해킹 및 서버 장애가 감지되어 점검 중입니다. 정상적인 예약은 유선(02-1111-2222)으로 부탁드립니다."
+        db.commit()
+    db.close()
+    return {"triggered": True}
+
+
 @app.on_event("startup")
 def startup_event():
     logger.debug("서버 시작 중...")
