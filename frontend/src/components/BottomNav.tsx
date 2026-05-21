@@ -5,20 +5,23 @@ import {
   AlertTriangle, 
   Settings,
   Brain,
-  CreditCard
+  CreditCard,
+  Inbox
 } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  user: any;
 }
 
-const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, user }) => {
   const navItems = [
     { id: 'dashboard', icon: BarChart3, label: 'Dash' },
     { id: 'sites', icon: Activity, label: 'Sites' },
     { id: 'alerts', icon: AlertTriangle, label: 'Alerts' },
     { id: 'spam', icon: Brain, label: 'Spam' },
+    ...(user?.role === 'superadmin' ? [{ id: 'leads', icon: Inbox, label: 'Leads' }] : []),
     { id: 'billing', icon: CreditCard, label: 'Pay' },
     { id: 'settings', icon: Settings, label: 'Set' },
   ];

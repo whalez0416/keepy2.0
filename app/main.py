@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.db import engine, Base, SessionLocal
-from app.api import sites, logs, alerts, checks, spam, auth, organizations, billing
+from app.api import sites, logs, alerts, checks, spam, auth, organizations, billing, leads
 from app.api.auth import get_password_hash
 from app.models import User, UserRole
 from app.ui import views
@@ -39,6 +39,7 @@ app.include_router(logs.router, prefix="/api/logs", tags=["Logs API"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts API"])
 app.include_router(checks.router, prefix="/api/checks", tags=["Checks API"])
 app.include_router(spam.router, prefix="/api/spam", tags=["Spam AI API"])
+app.include_router(leads.router, prefix="/api/leads", tags=["Leads API"])
 
 # UI 라우터 등록 (루트 경로)
 app.include_router(views.router, tags=["Admin UI"])

@@ -179,3 +179,8 @@ export const billingApi = {
   getStatus: (orgId: number) => authApiInstance.get(`/billing/status/${orgId}`),
   subscribe: (orgId: number, plan: string) => authApiInstance.post(`/billing/subscribe/${orgId}`, null, { params: { plan } }),
 };
+
+export const leadsApi = {
+  list: () => authApiInstance.get('/leads/'),
+  updateStatus: (id: number, status: string) => authApiInstance.patch(`/leads/${id}/status`, { status }),
+};

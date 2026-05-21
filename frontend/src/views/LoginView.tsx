@@ -23,7 +23,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegiste
       const res = await authApi.login(email, password);
       onLoginSuccess(res.data.access_token, res.data.user);
     } catch (err: any) {
-      setError(err.response?.data?.detail || '로그인에 실패했습니다.');
+      if (!err.response) {
+        setError('서버와 통신할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        setError(err.response?.data?.detail || '로그인에 실패했습니다.');
+      }
     } finally {
       setLoading(false);
     }

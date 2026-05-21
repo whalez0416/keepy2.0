@@ -21,3 +21,6 @@ venv.bak/
 # OS
 .DS_Store
 Thumbs.db
+*test*.py
+*check*.py
+*reset*.py

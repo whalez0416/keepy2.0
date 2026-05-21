@@ -19,6 +19,7 @@ import PricingView from './views/PricingView';
 import LoginView from './views/LoginView';
 import RegisterView from './views/RegisterView';
 import PaymentSuccessView from './views/PaymentSuccessView';
+import LeadsAdminView from './views/LeadsAdminView';
 import SiteConfigModal from './components/SiteConfigModal';
 import BuildingSelector from './components/HospitalSelector';
 import { User, Site } from './lib/api';
@@ -71,7 +72,7 @@ function App() {
   // Sync activeTab with URL if possible, or just keep it for now
   useEffect(() => {
     const path = location.pathname.substring(1);
-    if (path && ['dashboard', 'sites', 'alerts', 'spam', 'billing', 'pricing', 'settings'].includes(path)) {
+    if (path && ['dashboard', 'sites', 'alerts', 'spam', 'billing', 'pricing', 'settings', 'leads'].includes(path)) {
       setActiveTab(path);
     }
   }, [location.pathname]);
@@ -113,6 +114,7 @@ function App() {
       case 'sites': return <SiteListView key={`${refreshTrigger}-${selectedOrgId}`} selectedOrgId={selectedOrgId} />;
       case 'alerts': return <AlertHistoryView />;
       case 'spam': return <SpamManagementView />;
+      case 'leads': return <LeadsAdminView />;
       case 'billing': return <BillingView selectedOrgId={selectedOrgId} />;
       case 'pricing': return <PricingView />;
       case 'settings': return <SettingsView onLogout={handleLogout} />;
@@ -126,7 +128,7 @@ function App() {
 
   return (
     <div className="min-h-screen flex text-slate-200 bg-[#080a0f] selection:bg-emerald-500/30">
-      <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); navigate(`/${tab}`); }} onLogout={handleLogout} />
+      <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); navigate(`/${tab}`); }} onLogout={handleLogout} user={user} />
 
       <main className="flex-1 overflow-y-auto pb-20 md:pb-0 relative">
         <header className="h-16 md:h-24 flex items-center justify-between px-6 md:px-10 sticky top-0 bg-[#080a0f]/60 backdrop-blur-xl z-40 border-b border-white/[0.03]">
@@ -135,12 +137,7 @@ function App() {
                 <span className="text-emerald-400 font-black text-lg">K</span>
              </div>
              <h2 className="md:hidden font-bold text-xl tracking-tighter">Keepy</h2>
-             <div className="hidden md:flex items-center gap-4 bg-white/[0.03] px-6 py-3 rounded-2xl border border-white/5 focus-within:border-emerald-500/30 focus-within:bg-white/[0.05] transition-all group">
-                <Search size={18} className="text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
-                <input type="text" placeholder="병원 또는 시스템 상태 검색..." className="bg-transparent border-none outline-none text-sm w-72 placeholder:text-slate-600 font-medium" />
-              </div>
           </div>
-
           <div className="flex items-center gap-4">
             {user?.role === 'superadmin' && (
               <div className="hidden md:block mr-2">
@@ -188,6 +185,7 @@ function App() {
             <Route path="/sites" element={<SiteListView selectedOrgId={selectedOrgId} />} />
             <Route path="/alerts" element={<AlertHistoryView />} />
             <Route path="/spam" element={<SpamManagementView />} />
+            <Route path="/leads" element={<LeadsAdminView />} />
             <Route path="/billing" element={<BillingView selectedOrgId={selectedOrgId} />} />
             <Route path="/pricing" element={<PricingView />} />
             <Route path="/settings" element={<SettingsView onLogout={handleLogout} />} />
@@ -199,7 +197,7 @@ function App() {
         <div className="fixed bottom-1/4 -left-20 w-96 h-96 bg-emerald-600/10 blur-[120px] rounded-full pointer-events-none -z-10" />
       </main>
 
-      <BottomNav activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); navigate(`/${tab}`); }} />
+      <BottomNav activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); navigate(`/${tab}`); }} user={user} />
 
       <SiteConfigModal 
         isOpen={isConfigModalOpen} 

@@ -191,3 +191,23 @@ class AuditLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     organization = relationship("Organization", back_populates="audit_logs")
+
+class LeadStatus(enum.Enum):
+    NEW = "new"
+    IN_REVIEW = "in_review"
+    CONTACTED = "contacted"
+    CLOSED = "closed"
+
+class Lead(Base):
+    __tablename__ = "leads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    hospital_name = Column(String, nullable=False)
+    contact_name = Column(String, nullable=False)
+    phone_number = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    website_url = Column(String, nullable=False)
+    plan = Column(String, nullable=True)
+    inquiry = Column(Text, nullable=True)
+    status = Column(Enum(LeadStatus), default=LeadStatus.NEW)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

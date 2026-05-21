@@ -1,30 +1,25 @@
-# Use the official Playwright image for Python
-FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
+FROM python:3.9-slim
 
-# Set work directory
+# 작업 디렉토리 설정
 WORKDIR /app
 
-# Copy requirements and install
+# 시스템 의존성 설치 (필요시)
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+
+# 파이썬 환경 설정
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# 의존성 파일 복사 및 설치
 COPY requirements.txt .
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers and dependencies
-# The base image already has them, but this ensures they are ready for the app user.
-RUN playwright install chromium --with-deps
-
-# Copy the rest of the application
+# 애플리케이션 소스 복사
 COPY . .
 
-# Create a directory for persistent data (SQLite, Screenshots)
-RUN mkdir -p /data/screenshots && chmod -R 777 /data
-
-# Set environment variables
-ENV DATABASE_URL=sqlite:////data/keepy.db
-ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
-
-# Expose the port (Railway will provide this via PORT env var)
+# 포트 개방
 EXPOSE 8000
 
-# Start command
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Gunicorn을 사용하여 FastAPI 실행 (Uvicorn Worker 사용)
+CMD ["gunicorn", "app.main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
