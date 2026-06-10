@@ -19,6 +19,7 @@ import {
   Brain
 } from 'lucide-react';
 import { Site, FormConfig, SpamConfig, sitesApi, Organization, organizationsApi } from '../lib/api';
+import AutoDiscoveryModal from './AutoDiscoveryModal';
 
 interface SiteConfigModalProps {
   isOpen: boolean;
@@ -58,6 +59,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
 
   const user = JSON.parse(localStorage.getItem('keepy_user') || '{}');
   const isSuperAdmin = user.role === 'superadmin';
@@ -163,6 +165,31 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
   const removeForm = (index: number) => {
     setForms(forms.filter((_, i) => i !== index));
     if (activeFormIndex === index) setActiveFormIndex(null);
+  };
+
+  const handleApplyDiscovery = (discoveredForm: any, homepageUrl: string) => {
+    setForms(prev => [
+      ...prev,
+      {
+        name: discoveredForm.link_text || '자동 탐지 상담폼',
+        form_url: discoveredForm.url,
+        name_selector: discoveredForm.selectors.name_selector || '',
+        phone_selector: discoveredForm.selectors.phone_selector || '',
+        subject_selector: discoveredForm.selectors.subject_selector || '',
+        message_selector: discoveredForm.selectors.message_selector || '',
+        agreement_selector: discoveredForm.selectors.agreement_selector || '',
+        submit_selector: discoveredForm.selectors.submit_selector || '',
+        check_interval_minutes: 60,
+        is_active: true
+      }
+    ]);
+    if (!formData.homepage_url) {
+      setFormData(prev => ({
+        ...prev,
+        homepage_url: homepageUrl
+      }));
+    }
+    setActiveFormIndex(forms.length);
   };
 
   const removeSpam = (index: number) => {
@@ -294,9 +321,18 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                     <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
                     <h3 className="text-sm font-black text-slate-300 uppercase tracking-wider">상담폼 모니터링 ({forms.length})</h3>
                   </div>
-                  <button type="button" onClick={addForm} className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 text-xs font-black hover:bg-emerald-500/20 transition-all flex items-center gap-1">
-                    <Plus size={14} /> 추가
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      type="button" 
+                      onClick={() => setIsDiscoveryOpen(true)}
+                      className="px-3 py-1.5 bg-violet-500/10 text-violet-400 rounded-xl border border-violet-500/20 text-xs font-black hover:bg-violet-500/20 transition-all flex items-center gap-1"
+                    >
+                      <Brain size={14} /> AI 자동 탐색 🌟
+                    </button>
+                    <button type="button" onClick={addForm} className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 text-xs font-black hover:bg-emerald-500/20 transition-all flex items-center gap-1">
+                      <Plus size={14} /> 추가
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -454,7 +490,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                            <div className="bg-violet-500/5 p-4 rounded-2xl border border-violet-500/10 flex items-start gap-3">
                               <Brain size={16} className="text-violet-400 mt-1 flex-shrink-0" />
                               <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-                                목록 URL을 입력하면 <strong>Gemini AI</strong>가 게시물 내용을 분석하여 스팸 여부를 자동 판별합니다.
+                                목록 URL을 입력하면 <strong>GPT AI</strong>가 게시물 내용을 분석하여 스팸 여부를 자동 판별합니다.
                               </p>
                            </div>
                         </div>
@@ -500,6 +536,11 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
           </div>
         </div>
       </div>
+      <AutoDiscoveryModal 
+        isOpen={isDiscoveryOpen}
+        onClose={() => setIsDiscoveryOpen(false)}
+        onApply={handleApplyDiscovery}
+      />
     </div>
   );
 };

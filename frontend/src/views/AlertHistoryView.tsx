@@ -16,6 +16,7 @@ const AlertHistoryView: React.FC = () => {
   const [sites, setSites] = useState<Record<number, Site>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'warning' | 'danger'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchData = async () => {
     try {
@@ -45,8 +46,13 @@ const AlertHistoryView: React.FC = () => {
   }, []);
 
   const filteredAlerts = alerts.filter(alert => {
-    if (filter === 'all') return true;
-    return alert.alert_level === filter;
+    const site = sites[alert.site_id];
+    const matchesSearch = 
+      alert.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (site?.site_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (filter === 'all') return matchesSearch;
+    return alert.alert_level === filter && matchesSearch;
   });
 
   return (
@@ -79,8 +85,10 @@ const AlertHistoryView: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
           <input 
             type="text" 
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
             placeholder="병원명 또는 메시지로 검색..." 
-            className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all placeholder:text-slate-600 font-medium"
+            className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all placeholder:text-slate-600 font-medium text-white"
           />
         </div>
       </div>
@@ -147,7 +155,11 @@ const AlertHistoryView: React.FC = () => {
                       <Shield size={14} /> 미해결
                     </div>
                   )}
-                  <button className="p-2.5 glass rounded-xl text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">
+                  <button 
+                    onClick={() => site && window.open(site.homepage_url, '_blank')}
+                    title="병원 웹사이트로 이동"
+                    className="p-2.5 glass rounded-xl text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                  >
                     <ExternalLink size={18} />
                   </button>
                 </div>

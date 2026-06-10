@@ -4,12 +4,10 @@ import {
   BarChart3, 
   Activity, 
   AlertTriangle, 
-  Settings, 
+  Settings,
   Download,
   Brain,
   LogOut,
-  CreditCard,
-  Crown,
   Inbox
 } from 'lucide-react';
 
@@ -27,8 +25,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
     { id: 'alerts', icon: AlertTriangle, label: '알림 내역' },
     { id: 'spam', icon: Brain, label: 'AI 스팸 관리' },
     ...(user?.role === 'superadmin' ? [{ id: 'leads', icon: Inbox, label: '상담 관리' }] : []),
-    { id: 'pricing', icon: Crown, label: '요금제 안내' },
-    { id: 'billing', icon: CreditCard, label: '결제 및 구독' },
     { id: 'settings', icon: Settings, label: '설정' },
   ];
 

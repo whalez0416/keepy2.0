@@ -3,11 +3,13 @@ Auto-Discovery API Endpoint
 병원 홈페이지 URL → 상담폼 자동 탐색
 """
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from ..services.auto_discovery import discover_site
 from ..utils.logger import get_logger
+from .. import models
+from .auth import get_current_user
 
 logger = get_logger("api_discovery")
 
@@ -26,7 +28,7 @@ class DiscoveryResponse(BaseModel):
 
 
 @router.post("/discover", response_model=DiscoveryResponse)
-def run_discovery(request: DiscoveryRequest):
+def run_discovery(request: DiscoveryRequest, current_user: models.User = Depends(get_current_user)):
     """
     병원 홈페이지 URL을 입력하면 상담폼 URL과 셀렉터를 자동으로 탐색합니다.
     

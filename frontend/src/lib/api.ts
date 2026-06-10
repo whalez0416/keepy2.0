@@ -21,7 +21,7 @@ authApiInstance.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('keepy_token');
       localStorage.removeItem('keepy_user');
-      window.location.href = '/';
+      window.location.href = '/app/login';
     }
     return Promise.reject(error);
   }
@@ -114,7 +114,7 @@ export interface SpamPost {
   url?: string;
   author?: string;
   content_snippet?: string;
-  method: 'keyword' | 'gemini_ai';
+  method: 'keyword' | 'openai_ai';
   confidence: number;
   reason: string;
 }
@@ -140,8 +140,12 @@ export const authApi = {
     axios.post(`${API_BASE_URL}/auth/login`, new URLSearchParams({ username: email, password })),
   register: (data: any) => 
     axios.post(`${API_BASE_URL}/auth/register`, data),
-  getMe: () => 
+  getMe: () =>
     authApiInstance.get('/auth/me'),
+  createHospitalAdmin: (data: any) =>
+    authApiInstance.post('/auth/create-hospital-admin', data),
+  changePassword: (current_password: string, new_password: string) =>
+    authApiInstance.post('/auth/change-password', { current_password, new_password }),
 };
 
 export const organizationsApi = {
@@ -175,12 +179,34 @@ export const spamApi = {
   runConfig: (id: number) => authApiInstance.post<SpamScanResult>(`/spam/configs/${id}/run`),
 };
 
-export const billingApi = {
-  getStatus: (orgId: number) => authApiInstance.get(`/billing/status/${orgId}`),
-  subscribe: (orgId: number, plan: string) => authApiInstance.post(`/billing/subscribe/${orgId}`, null, { params: { plan } }),
-};
-
 export const leadsApi = {
   list: () => authApiInstance.get('/leads/'),
   updateStatus: (id: number, status: string) => authApiInstance.patch(`/leads/${id}/status`, { status }),
+};
+
+export interface DiscoveredForm {
+  url: string;
+  link_text: string;
+  confidence: number;
+  selector_count: number;
+  selectors: {
+    name_selector?: string;
+    phone_selector?: string;
+    subject_selector?: string;
+    message_selector?: string;
+    agreement_selector?: string;
+    submit_selector?: string;
+  };
+}
+
+export interface DiscoveryResult {
+  success: boolean;
+  homepage_url: string;
+  discovered_forms: DiscoveredForm[];
+  error?: string;
+}
+
+export const discoveryApi = {
+  discover: (homepageUrl: string) => 
+    authApiInstance.post<DiscoveryResult>('/discovery/discover', { homepage_url: homepageUrl }),
 };

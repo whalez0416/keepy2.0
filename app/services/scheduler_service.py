@@ -3,7 +3,7 @@ from ..scheduler import scheduler
 from ..models import Site, FormConfig
 from .homepage_checker import check_homepage
 from .form_checker import check_form
-from .spam_hunter import run_spam_hunter
+from .ai_spam_classifier import run_ai_spam_hunter
 from .contact_checker import check_contact
 from .ssl_service import check_and_renew_ssl
 from .visual_checker import check_visual_defacement
@@ -54,7 +54,19 @@ def run_site_check(site_id: int, check_type: str, extra_id: int = None):
         
         elif check_type == "spam":
             for config in site.spam_configs:
-                run_spam_hunter(db, config)
+                if not config.is_active:
+                    continue
+                result = run_ai_spam_hunter(db, config)
+                # 스팸이 탐지되면 알림 생성 (탐지 + 알림, 자동 삭제는 안 함)
+                if result and result.get("spam_detected", 0) > 0:
+                    titles = ", ".join(
+                        p.get("title", "")[:30] for p in result.get("spam_posts", [])[:5]
+                    )
+                    msg = (
+                        f"🚫 [스팸 탐지] {site.site_name} 게시판에서 의심 게시물 "
+                        f"{result['spam_detected']}건이 발견되었습니다. (예: {titles})"
+                    )
+                    handle_check_result(db, site, "spam", "warning", msg)
         
         elif check_type == "contact":
             for config in site.contact_configs:

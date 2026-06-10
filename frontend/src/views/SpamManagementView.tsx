@@ -47,12 +47,12 @@ const SpamManagementView: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">AI 스팸 관리</h2>
-          <p className="text-slate-400 mt-1 font-medium">Gemini AI 기반으로 병원 게시판의 스팸을 정밀하게 탐지하고 관리합니다.</p>
+          <p className="text-slate-400 mt-1 font-medium">GPT AI 기반으로 병원 게시판의 스팸을 정밀하게 탐지하고 관리합니다.</p>
         </div>
         <div className="flex gap-3">
             <div className="bg-violet-500/10 border border-violet-500/20 px-4 py-2 rounded-2xl flex items-center gap-2">
                 <Brain size={18} className="text-violet-400" />
-                <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">Gemini 1.5 Flash Active</span>
+                <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">GPT AI Active</span>
             </div>
         </div>
       </div>

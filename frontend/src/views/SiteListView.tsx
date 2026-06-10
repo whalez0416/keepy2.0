@@ -24,6 +24,7 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const user = JSON.parse(localStorage.getItem('keepy_user') || '{}');
   const isSuperAdmin = user.role === 'superadmin';
@@ -68,6 +69,12 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
     }
   };
 
+  const filteredSites = sites.filter(site => 
+    site.site_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (site.hospital_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    site.homepage_url.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="p-8 space-y-8 animate-in slide-up duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -93,11 +100,16 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
           <input 
             type="text" 
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
             placeholder="병원명, URL 또는 그룹으로 검색..." 
-            className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 outline-none transition-all placeholder:text-slate-600 font-medium"
+            className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 outline-none transition-all placeholder:text-slate-600 font-medium text-white"
           />
         </div>
-        <button className="glass px-6 py-4 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all text-slate-300 font-bold border-white/10">
+        <button 
+          onClick={() => alert('실시간 검색 필터가 현재 목록에 즉시 반영되고 있습니다.')}
+          className="glass px-6 py-4 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all text-slate-300 font-bold border-white/10"
+        >
           <Filter size={18} /> 필터 상세
         </button>
       </div>
@@ -122,7 +134,7 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
                     <td colSpan={5} className="px-8 py-6 h-20 bg-white/[0.01]" />
                   </tr>
                 ))
-              ) : sites.length === 0 ? (
+              ) : filteredSites.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-8 py-24 text-center text-slate-500">
                     <Activity size={48} className="mx-auto mb-4 opacity-10" />
@@ -130,7 +142,7 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
                   </td>
                 </tr>
               ) : (
-                sites.map(site => (
+                filteredSites.map(site => (
                   <tr key={site.id} className="hover:bg-white/[0.03] transition-all group">
                     <td className="px-8 py-6">
                       <div className="font-bold text-slate-200 group-hover:text-white transition-colors">{site.site_name}</div>

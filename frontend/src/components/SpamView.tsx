@@ -12,7 +12,7 @@ interface SpamViewProps {
 }
 
 const MethodBadge: React.FC<{ method: string }> = ({ method }) => {
-  const isAI = method === 'gemini_ai';
+  const isAI = method === 'openai_ai';
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold border ${
       isAI
@@ -20,7 +20,7 @@ const MethodBadge: React.FC<{ method: string }> = ({ method }) => {
         : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
     }`}>
       {isAI ? <Brain size={9} /> : <Tag size={9} />}
-      {isAI ? 'Gemini AI' : '키워드'}
+      {isAI ? 'GPT AI' : '키워드'}
     </span>
   );
 };
@@ -260,7 +260,7 @@ const SpamView: React.FC<SpamViewProps> = ({ siteId, siteName }) => {
         <div className="bg-violet-500/5 border border-violet-500/20 rounded-2xl p-6 text-center space-y-3">
           <Brain size={32} className="mx-auto text-violet-400 animate-pulse" />
           <div>
-            <p className="font-semibold text-white">Gemini AI가 게시물을 분석 중입니다...</p>
+            <p className="font-semibold text-white">GPT AI가 게시물을 분석 중입니다...</p>
             <p className="text-slate-400 text-sm mt-1">게시물 텍스트를 읽고 스팸 여부를 판별합니다</p>
           </div>
         </div>

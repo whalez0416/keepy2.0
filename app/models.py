@@ -3,6 +3,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
 from .db import Base
+from .utils.crypto import EncryptedString
 
 class UserRole(enum.Enum):
     SUPERADMIN = "superadmin"
@@ -109,7 +110,7 @@ class FormConfig(Base):
     subject_selector = Column(String, nullable=True)
     message_selector = Column(String, nullable=True)
     password_selector = Column(String, nullable=True)
-    password_value = Column(String, nullable=True)
+    password_value = Column(EncryptedString, nullable=True)  # 폼 테스트용 비밀번호 — 암호화 저장
     agreement_selector = Column(String, nullable=True)
     submit_selector = Column(String, nullable=True)
     
@@ -125,7 +126,7 @@ class SpamConfig(Base):
     site_id = Column(Integer, ForeignKey("sites.id"))
     board_url = Column(String, nullable=False)
     admin_id = Column(String, nullable=True)
-    admin_pw = Column(String, nullable=True)
+    admin_pw = Column(EncryptedString, nullable=True)  # 고객 게시판 관리자 비밀번호 — 암호화 저장
     keywords = Column(Text, nullable=True) # 콤마로 구분된 금지어
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

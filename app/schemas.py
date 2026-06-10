@@ -129,6 +129,12 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+class HospitalAdminCreate(BaseModel):
+    email: str
+    password: str
+    hospital_name: str
+    plan: Optional[str] = "starter"
+
 class User(UserBase):
     id: int
     full_name: Optional[str] = None

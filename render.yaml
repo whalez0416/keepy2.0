@@ -7,11 +7,27 @@ services:
     envVars:
       - key: PORT
         value: 8000
-      - key: DATABASE_URL
-        value: sqlite:///./keepy.db
       - key: DEBUG
         value: "false"
-    healthCheckPath: /
-    # 무료 티어에서는 디스크 볼륨 지원이 제한적일 수 있으므로
-    # 초기 데이터 유실을 방지하기 위해 SQLite를 사용하되
-    # 추후 Supabase(PostgreSQL) 등으로 전환 권장
+      # 데이터베이스
+      # 무료 티어는 영구 디스크가 없어 재배포 시 SQLite 데이터가 사라집니다.
+      # 운영에서는 관리형 PostgreSQL(Supabase/Render Postgres)을 만들고
+      # DATABASE_URL 을 postgresql://... 로 지정하세요. (코드 수정 불필요)
+      - key: DATABASE_URL
+        value: sqlite:///./keepy.db
+      # === 아래 값들은 Render 대시보드에서 직접 입력 (sync:false = 코드에 노출 안 함) ===
+      - key: SECRET_KEY        # JWT 서명 키 (길고 랜덤한 문자열). 미설정 시 부팅 실패.
+        sync: false
+      - key: MASTER_EMAIL      # 마스터(운영자) 로그인 이메일
+        sync: false
+      - key: MASTER_PASSWORD   # 마스터(운영자) 로그인 비밀번호
+        sync: false
+      - key: OPENAI_API_KEY    # AI 스팸 분류용 GPT 키
+        sync: false
+      - key: CORS_ORIGINS      # 프론트 도메인 (예: https://app.keepy.com). 미설정 시 전체 허용.
+        sync: false
+      - key: SMTP_USER         # 알림 이메일 발송 계정
+        sync: false
+      - key: SMTP_PASSWORD     # 이메일 앱 비밀번호
+        sync: false
+    healthCheckPath: /api/health

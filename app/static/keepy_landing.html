@@ -28,6 +28,7 @@
         <a href="#features" class="nav-link">기능</a>
         <a href="#pricing" class="nav-link">요금</a>
         <a href="#contact" class="nav-link">문의</a>
+        <a href="/app/login" class="nav-link">로그인</a>
         <a href="#contact" class="nav-cta">무료 체험 신청</a>
     </div>
 </header>
@@ -95,8 +96,8 @@
             <div class="flow-card gsap-flow-item">
                 <div class="flow-num">03</div>
                 <div class="f-icon-box"><i data-lucide="shield-alert"></i></div>
-                <h3>긴급 차단 & 알림</h3>
-                <p>즉시 관리자에게 알림을 발송하고,<br>홈페이지에 긴급 배너를 띄웁니다.</p>
+                <h3>긴급 알림 & 배너</h3>
+                <p>즉시 관리자에게 알림을 발송하고,<br>클릭 한 번으로 홈페이지에 긴급 배너를 띄웁니다.</p>
             </div>
         </div>
     </div>
@@ -161,7 +162,7 @@
             <div class="fcard gsap-fcard">
                 <span class="fi"><i data-lucide="bot"></i></span>
                 <h3>AI 스팸 헌터</h3>
-                <p>Google Gemini AI가 게시판 글의 맥락을 분석하여 병원 특화 지능형 스팸을 판별·차단합니다.</p>
+                <p>GPT AI가 게시판 글의 맥락을 분석하여 병원 특화 지능형 스팸을 판별하고 담당자에게 즉시 알립니다.</p>
             </div>
             <div class="fcard gsap-fcard">
                 <span class="fi"><i data-lucide="megaphone"></i></span>
@@ -253,7 +254,7 @@
                 <span class="price-sub">맞춤형 견적</span>
                 <ul>
                     <li><i data-lucide="check"></i> Pro 전체 기능 포함</li>
-                    <li><i data-lucide="check"></i> SSL 자동 갱신</li>
+                    <li><i data-lucide="check"></i> SSL 만료 자동 추적·알림</li>
                     <li><i data-lucide="check"></i> 관리자 페이지 보안 감시</li>
                     <li><i data-lucide="check"></i> 전용 담당자 배정</li>
                     <li><i data-lucide="check"></i> SLA 99.9% 보장</li>
@@ -276,18 +277,19 @@
             <div class="ccard gsap-contact-form">
                 <form id="kform" onsubmit="handleSubmit(event)">
                     <div class="form-row">
-                        <div class="fg"><label class="fl">병원/기관명 *</label><input class="fi" placeholder="예: 강남아이안과" required></div>
-                        <div class="fg"><label class="fl">담당자 성함 *</label><input class="fi" placeholder="홍길동" required></div>
+                        <div class="fg"><label class="fl">병원/기관명 *</label><input id="f-hospital" class="fi" placeholder="예: 강남아이안과" required></div>
+                        <div class="fg"><label class="fl">담당자 성함 *</label><input id="f-name" class="fi" placeholder="홍길동" required></div>
                     </div>
                     <div class="form-row">
-                        <div class="fg"><label class="fl">연락처 *</label><input type="tel" class="fi" placeholder="010-0000-0000" required></div>
-                        <div class="fg"><label class="fl">이메일 *</label><input type="email" class="fi" placeholder="example@hospital.com" required></div>
+                        <div class="fg"><label class="fl">연락처 *</label><input id="f-phone" type="tel" class="fi" placeholder="010-0000-0000" required></div>
+                        <div class="fg"><label class="fl">이메일 *</label><input id="f-email" type="email" class="fi" placeholder="example@hospital.com" required></div>
                     </div>
-                    <div class="fg"><label class="fl">보호할 웹사이트 주소 *</label><input type="url" class="fi" placeholder="https://..." required></div>
-                    <div class="fg"><label class="fl">관심 요금제</label><select class="fi"><option>Starter (월 5만원)</option><option selected>Pro (월 12만원) — 추천</option><option>Enterprise (별도 협의)</option></select></div>
-                    <div class="fg"><label class="fl">문의 사항 (선택)</label><textarea class="fi" placeholder="궁금하신 점을 자유롭게 적어주세요."></textarea></div>
+                    <div class="fg"><label class="fl">보호할 웹사이트 주소 *</label><input id="f-website" type="url" class="fi" placeholder="https://..." required></div>
+                    <div class="fg"><label class="fl">관심 요금제</label><select id="f-plan" class="fi"><option>Starter (월 5만원)</option><option selected>Pro (월 12만원) — 추천</option><option>Enterprise (별도 협의)</option></select></div>
+                    <div class="fg"><label class="fl">문의 사항 (선택)</label><textarea id="f-inquiry" class="fi" placeholder="궁금하신 점을 자유롭게 적어주세요."></textarea></div>
                     <button type="submit" class="sbtn" id="sbtn"><i data-lucide="send"></i> 무료 체험 신청하기</button>
                 </form>
+                <div id="serr" class="smsg" style="display:none;color:#fca5a5;background:rgba(239,68,68,.08)">⚠️ 전송에 실패했습니다. 잠시 후 다시 시도하시거나 02-1234-5678로 연락 주세요.</div>
                 <div id="smsg" class="smsg">🎉 신청이 완료되었습니다! 24시간 내에 담당자가 연락드리겠습니다.</div>
             </div>
         </div>
@@ -426,7 +428,7 @@ window.addEventListener('scroll', () => {
 /* ---- Typing animation ---- */
 const phrases = [
     '상담폼 장애 감지 중...',
-    '연락처 변조 차단 중...',
+    '연락처 변조 감시 중...',
     '화면 훼손 탐지 중...',
     'AI 스팸 필터 가동 중...',
     'SSL 인증서 상태 확인 중...'
@@ -487,22 +489,46 @@ ScrollTrigger.create({
     }
 });
 
-/* ---- Form submit ---- */
-function handleSubmit(e) {
+/* ---- Form submit → 백엔드(/api/leads/)로 실제 전송 ---- */
+async function handleSubmit(e) {
     e.preventDefault();
     const b = document.getElementById('sbtn');
+    const errBox = document.getElementById('serr');
+    errBox.style.display = 'none';
     b.disabled = true;
     b.textContent = '전송 중...';
     b.style.opacity = '.6';
-    setTimeout(() => {
+
+    const payload = {
+        hospital_name: document.getElementById('f-hospital').value.trim(),
+        contact_name:  document.getElementById('f-name').value.trim(),
+        phone_number:  document.getElementById('f-phone').value.trim(),
+        email:         document.getElementById('f-email').value.trim(),
+        website_url:   document.getElementById('f-website').value.trim(),
+        plan:          document.getElementById('f-plan').value,
+        inquiry:       document.getElementById('f-inquiry').value.trim()
+    };
+
+    try {
+        const res = await fetch('/api/leads/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('request failed: ' + res.status);
+        // 성공
         document.getElementById('kform').style.display = 'none';
         document.getElementById('smsg').style.display = 'block';
-    }, 800);
+    } catch (err) {
+        // 실패 시 버튼 복구 + 에러 안내
+        b.disabled = false;
+        b.innerHTML = '<i data-lucide="send"></i> 무료 체험 신청하기';
+        b.style.opacity = '1';
+        if (window.lucide) lucide.createIcons();
+        errBox.style.display = 'block';
+    }
 }
 </script>
-
-<!-- Keepy Emergency Banner Integration -->
-<script src="/static/keepy-banner.js" data-site-id="100"></script>
 
 </body>
 </html>

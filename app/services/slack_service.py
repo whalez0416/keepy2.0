@@ -1,12 +1,14 @@
-import os
 import requests
 import json
+from app.config import settings
 from app.utils.logger import get_logger
 
 logger = get_logger("slack_service")
 
-# 슬랙 웹훅 URL (나중에 실제 URL로 교체)
-SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
+SLACK_WEBHOOK_URL = settings.SLACK_WEBHOOK_URL
+# 관리자 리드 페이지 링크 (CORS_ORIGINS의 첫 도메인 또는 상대경로)
+_origin = settings.CORS_ORIGINS.split(",")[0].strip()
+_admin_link = (f"{_origin}/leads" if _origin and _origin != "*" else "/leads")
 
 def send_new_lead_notification(lead_data: dict):
     """
@@ -22,7 +24,7 @@ def send_new_lead_notification(lead_data: dict):
         f"🌐 *웹사이트:* {lead_data.get('website_url')}\n"
         f"💳 *관심 요금제:* {lead_data.get('plan')}\n"
         f"📝 *문의 내용:* {lead_data.get('inquiry', '없음')}\n\n"
-        f"👉 <http://localhost:8000/admin/leads|관리자 페이지에서 확인하기>"
+        f"👉 <{_admin_link}|관리자 페이지에서 확인하기>"
     )
 
     payload = {

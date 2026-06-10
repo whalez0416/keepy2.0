@@ -30,6 +30,10 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
     if check_type == "form" and status == "fail":
         should_alert = True
         alert_level = "danger"
+    elif check_type == "spam" and status in ("warning", "fail"):
+        # AI 스팸 헌터가 스팸을 탐지하면 알림
+        should_alert = True
+        alert_level = "warning"
     elif check_type == "homepage" and status == "fail":
         # 이전 점검 결과도 실패였는지 확인 (2회 연속 실패 시 알림)
         last_logs = db.query(Log).filter(

@@ -14,11 +14,8 @@ import SiteListView from './views/SiteListView';
 import AlertHistoryView from './views/AlertHistoryView';
 import SettingsView from './views/SettingsView';
 import SpamManagementView from './views/SpamManagementView';
-import BillingView from './views/BillingView';
-import PricingView from './views/PricingView';
 import LoginView from './views/LoginView';
 import RegisterView from './views/RegisterView';
-import PaymentSuccessView from './views/PaymentSuccessView';
 import LeadsAdminView from './views/LeadsAdminView';
 import SiteConfigModal from './components/SiteConfigModal';
 import BuildingSelector from './components/HospitalSelector';
@@ -72,7 +69,7 @@ function App() {
   // Sync activeTab with URL if possible, or just keep it for now
   useEffect(() => {
     const path = location.pathname.substring(1);
-    if (path && ['dashboard', 'sites', 'alerts', 'spam', 'billing', 'pricing', 'settings', 'leads'].includes(path)) {
+    if (path && ['dashboard', 'sites', 'alerts', 'spam', 'settings', 'leads'].includes(path)) {
       setActiveTab(path);
     }
   }, [location.pathname]);
@@ -81,27 +78,16 @@ function App() {
     return (
       <Routes>
         <Route path="/login" element={
-          <LoginView 
-            onLoginSuccess={handleLoginSuccess} 
-            onSwitchToRegister={() => navigate('/register')} 
-            onShowPricing={() => navigate('/pricing')}
+          <LoginView
+            onLoginSuccess={handleLoginSuccess}
+            onSwitchToRegister={() => navigate('/register')}
           />
         } />
         <Route path="/register" element={
-          <RegisterView 
-            onSwitchToLogin={() => navigate('/login')} 
-            onRegisterSuccess={() => navigate('/login')} 
-            onShowPricing={() => navigate('/pricing')}
+          <RegisterView
+            onSwitchToLogin={() => navigate('/login')}
+            onRegisterSuccess={() => navigate('/login')}
           />
-        } />
-        <Route path="/pricing" element={
-          <div className="relative">
-            <PricingView />
-            <div className="fixed top-8 right-8 z-50 flex gap-4">
-              <button onClick={() => navigate('/login')} className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 transition-all backdrop-blur-md">로그인</button>
-              <button onClick={() => navigate('/register')} className="px-6 py-3 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">시작하기</button>
-            </div>
-          </div>
         } />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
@@ -115,16 +101,10 @@ function App() {
       case 'alerts': return <AlertHistoryView />;
       case 'spam': return <SpamManagementView />;
       case 'leads': return <LeadsAdminView />;
-      case 'billing': return <BillingView selectedOrgId={selectedOrgId} />;
-      case 'pricing': return <PricingView />;
       case 'settings': return <SettingsView onLogout={handleLogout} />;
       default: return <DashboardView key={`${refreshTrigger}-${selectedOrgId}`} onEditSite={handleEditSite} selectedOrgId={selectedOrgId} user={user} />;
     }
   };
-
-  if (location.pathname === '/payment/success') {
-    return <PaymentSuccessView />;
-  }
 
   return (
     <div className="min-h-screen flex text-slate-200 bg-[#080a0f] selection:bg-emerald-500/30">
@@ -186,8 +166,6 @@ function App() {
             <Route path="/alerts" element={<AlertHistoryView />} />
             <Route path="/spam" element={<SpamManagementView />} />
             <Route path="/leads" element={<LeadsAdminView />} />
-            <Route path="/billing" element={<BillingView selectedOrgId={selectedOrgId} />} />
-            <Route path="/pricing" element={<PricingView />} />
             <Route path="/settings" element={<SettingsView onLogout={handleLogout} />} />
             <Route path="/" element={<Navigate to="/dashboard" />} />
           </Routes>
