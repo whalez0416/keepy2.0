@@ -71,7 +71,7 @@ def _call_openai_api(posts: List[Dict[str, str]]) -> Optional[List[Dict[str, Any
         for i, post in enumerate(posts):
             posts_text += f"{i}. 제목: {post.get('title', '')}\n"
             if post.get('content'):
-                posts_text += f"   내용 미리보기: {post.get('content', '')[:200]}\n"
+                posts_text += f"   내용 미리보기: {post.get('content', '')[:300]}\n"
 
         payload = json.dumps({
             "model": settings.OPENAI_MODEL,
@@ -142,40 +142,103 @@ def _keyword_spam_check(title: str, keywords: List[str]) -> Dict[str, Any]:
     }
 
 
+# 게시판 목록에서 글 제목/링크를 찾을 때 시도할 셀렉터 (게시판 종류별)
+LIST_SELECTORS = [
+    ".td_subject a",    # 그누보드
+    ".list-title",      # 도넛
+    ".tit a",           # 워드프레스
+    "td.subject a",     # 일반 테이블형
+    ".board-list td a",
+    "table.bbs_list td a",
+    ".post-title a",
+    "h2.entry-title a",
+    ".notice_list td a",
+    "li.list_item a",
+    ".article-list a",
+]
+
+# 게시물 상세 페이지에서 본문을 찾을 때 시도할 셀렉터
+POST_CONTENT_SELECTORS = [
+    "#bo_v_con",            # 그누보드5
+    ".bo_v_con",
+    ".view_content",
+    ".board-view-content",
+    ".view-content",
+    ".read_content",
+    ".bbs_content",
+    ".entry-content",       # 워드프레스
+    "article .content",
+    ".post-content",
+    ".article-content",
+    "#content",
+]
+
+# 본문까지 읽는 것은 게시물마다 상세 페이지를 방문하므로, 한 번에 처리할 게시물 수를 제한한다.
+MAX_POSTS = 25
+
+
+def _extract_post_content(page: Page, url: str) -> str:
+    """게시물 상세 페이지를 열어 본문 텍스트 미리보기를 추출한다. 실패 시 빈 문자열."""
+    try:
+        page.goto(url, timeout=20000)
+        page.wait_for_load_state("domcontentloaded")
+    except Exception:
+        return ""
+
+    for selector in POST_CONTENT_SELECTORS:
+        try:
+            el = page.locator(selector).first
+            if el.count() > 0:
+                text = el.inner_text().strip()
+                if text and len(text) > 10:
+                    return text[:500]
+        except Exception:
+            continue
+
+    # 본문 셀렉터를 못 찾으면 페이지 body 전체 텍스트로 폴백
+    try:
+        body_text = page.locator("body").inner_text().strip()
+        return body_text[:500] if body_text else ""
+    except Exception:
+        return ""
+
+
 def _extract_posts_from_page(page: Page, config: SpamConfig) -> List[Dict[str, str]]:
-    """게시판 페이지에서 게시물 목록 추출."""
-    posts = []
+    """게시판 목록에서 (제목, 링크)를 추출하고, 각 게시물 상세 페이지를 방문해 본문 미리보기까지 가져온다."""
+    from urllib.parse import urljoin
 
-    selectors = [
-        ".td_subject a",    # 그누보드
-        ".list-title",      # 도넛
-        ".tit a",           # 워드프레스
-        "td.subject a",     # 일반 테이블형
-        ".board-list td a",
-        "table.bbs_list td a",
-        ".post-title a",
-        "h2.entry-title a",
-        ".notice_list td a",
-        "li.list_item a",
-        ".article-list a",
-    ]
+    list_url = page.url
+    raw_posts = []  # (title, href) 쌍
 
-    for selector in selectors:
+    for selector in LIST_SELECTORS:
         try:
             elements = page.locator(selector).all()
             if elements:
-                for el in elements[:30]:
+                for el in elements[:MAX_POSTS]:
                     try:
                         title = el.inner_text().strip()
+                        href = el.get_attribute("href")
                         if title and len(title) > 1:
-                            posts.append({"title": title, "content": ""})
+                            raw_posts.append((title, href))
                     except Exception:
                         continue
-                if posts:
-                    logger.debug(f"[AI SPAM] 셀렉터 '{selector}'로 {len(posts)}개 게시물 발견")
+                if raw_posts:
+                    logger.debug(f"[AI SPAM] 셀렉터 '{selector}'로 {len(raw_posts)}개 게시물 발견")
                     break
         except Exception:
             continue
+
+    # 각 게시물의 본문 미리보기 추출 (상세 페이지 방문)
+    posts = []
+    for title, href in raw_posts:
+        content = ""
+        if href and not href.lower().startswith("javascript:"):
+            detail_url = urljoin(list_url, href)
+            content = _extract_post_content(page, detail_url)
+        posts.append({"title": title, "content": content})
+
+    fetched = sum(1 for p in posts if p["content"])
+    logger.info(f"[AI SPAM] 게시물 {len(posts)}개 중 {fetched}개 본문 추출 완료")
 
     return posts
 
