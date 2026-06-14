@@ -28,28 +28,37 @@ logger = get_logger("ai_spam_classifier")
 # OpenAI(GPT) API 기반 스팸 분류 (실제 AI)
 # ─────────────────────────────────────────
 
-SPAM_CLASSIFICATION_PROMPT = """당신은 병원 홈페이지 게시판의 스팸 탐지 전문가입니다.
-아래 게시물 목록을 분석하여 각 게시물이 스팸인지 판단해주세요.
+SPAM_CLASSIFICATION_PROMPT = """당신은 병원 홈페이지 '환자 상담/문의 게시판'의 스팸 탐지 전문가입니다.
+이 게시판의 글은 대부분 실제 환자/보호자가 남긴 정상 문의입니다. 기본값은 '정상'이며,
+명백한 상업/불법 광고일 때만 스팸으로 판정하세요. 애매하면 반드시 정상으로 처리합니다.
 
-스팸 판단 기준:
-1. 광고/홍보성 내용 (병원과 무관한 상품/서비스 홍보)
-2. 불법 의약품 광고, 유사의료 행위 광고
-3. 도박, 성인물, 금융사기 관련 내용
-4. 의미 없는 반복 문자, 링크 스팸
-5. 특수문자 과다 사용, 이상한 URL 포함
-6. 외국어 스팸 (의료기관 게시판에 맞지 않는 언어)
+스팸으로 판정 (is_spam=true):
+1. 병원과 무관한 상품/서비스 광고·홍보 (대출, 코인, 쇼핑몰, 마케팅 대행 등)
+2. 불법 의약품(비아그라 등)·유사의료 행위 광고
+3. 도박/카지노/토토, 성인물, 금융사기
+4. 외부 사이트로 유도하는 도배성 링크, 광고 URL
+5. 게시판에 맞지 않는 외국어 광고성 도배
 
-정상 게시물 예시:
-- "안녕하세요, 다음 주 진료 예약 관련하여 문의드립니다"
-- "지난번 치료 후기입니다. 많이 나아졌어요"
-- "비용 견적 문의드립니다"
-- 테스트성 게시물 (KEEPY_TEST 등)
+정상으로 판정 (is_spam=false) — 아래는 스팸이 아닙니다:
+- 증상/진료/검사/비용/예약(변경·취소) 문의: "목아픔", "발가락 통증", "건강검진 예약변경", "조직검사 문의"
+- 오타·띄어쓰기 오류·짧은 제목·반말·비문 (예: "검강검진 에약변경"은 '건강검진 예약변경'의 오타일 뿐 정상)
+- 치료 후기, 감사 인사, 테스트성 글(KEEPY_TEST 등)
+- 본문이 비어있는 비밀글: 제목만으로 광고가 명백하지 않으면 정상으로 처리
+
+중요: 제목이 짧거나 오타가 있거나 어색하다는 이유만으로 스팸으로 판정하지 마세요.
+스팸 여부는 '상업/불법 광고성 의도'가 있는지로만 판단합니다.
+
+confidence는 '해당 글이 스팸일 확률'을 뜻하는 0.0~1.0 사이 숫자입니다.
+- is_spam이 true이면 confidence는 반드시 0.7 이상 (광고가 명백하면 0.9~1.0)
+- is_spam이 false이면 confidence는 반드시 0.3 이하 (정상이 확실하면 0.0~0.1)
+즉 is_spam과 confidence는 항상 같은 방향이어야 합니다. (스팸일수록 1.0에 가깝게)
 
 반드시 아래 JSON 형식으로만 응답하세요. 다른 설명은 절대 붙이지 마세요:
 
 {
   "results": [
-    {"index": 0, "title": "게시물 제목", "is_spam": true, "confidence": 0.0, "reason": "판단 이유(한국어로 간략히)"}
+    {"index": 0, "title": "정상 게시물 제목", "is_spam": false, "confidence": 0.05, "reason": "증상 문의로 정상"},
+    {"index": 1, "title": "광고성 게시물 제목", "is_spam": true, "confidence": 0.95, "reason": "대출 광고로 상업적 의도가 명백함"}
   ]
 }
 
@@ -148,6 +157,7 @@ LIST_SELECTORS = [
     ".list-title",      # 도넛
     ".tit a",           # 워드프레스
     "td.subject a",     # 일반 테이블형
+    "td.noticetitle a", # 킴스큐류(index.php/board) 계열
     ".board-list td a",
     "table.bbs_list td a",
     ".post-title a",
@@ -157,8 +167,51 @@ LIST_SELECTORS = [
     ".article-list a",
 ]
 
+# 위 셀렉터가 모두 실패했을 때, 링크 주소(href)에 흔히 나타나는 '글 보기' 패턴으로
+# 글을 찾아내는 폴백. (게시판 구조가 특이해도 글 상세 링크는 대개 이런 패턴을 가진다)
+POST_HREF_PATTERNS = [
+    "/board/view/", "/view/", "/read/",
+    "view.php", "read.php", "view.asp", "read.asp",
+    "passwordform",          # 비밀글 (제목만 수집, 본문은 비번 필요)
+    "wr_id=", "bo_table=",   # 그누보드 쿼리스트링형
+    "mode=view", "mode=read",
+    "?idx=", "&idx=", "no=", "&id=",
+]
+
+
+def _extract_posts_by_href(page: Page) -> List[tuple]:
+    """이름 셀렉터가 실패했을 때, href 패턴으로 (제목, href) 후보를 추출한다."""
+    raw = []
+    seen = set()
+    try:
+        anchors = page.eval_on_selector_all(
+            "a",
+            "els => els.map(e => ({t: (e.innerText||'').trim(), h: e.getAttribute('href') || ''}))",
+        )
+    except Exception:
+        return raw
+
+    for a in anchors:
+        title = (a.get("t") or "").strip()
+        href = a.get("h") or ""
+        if not title or len(title) <= 1:
+            continue
+        low = href.lower()
+        if not any(pat in low for pat in POST_HREF_PATTERNS):
+            continue
+        key = (title, href)
+        if key in seen:
+            continue
+        seen.add(key)
+        raw.append((title, href))
+        if len(raw) >= MAX_POSTS:
+            break
+    return raw
+
 # 게시물 상세 페이지에서 본문을 찾을 때 시도할 셀렉터
 POST_CONTENT_SELECTORS = [
+    ".contents",            # 킴스큐류(index.php/board) 본문
+    ".re_contents",         # 〃 답변 본문
     "#bo_v_con",            # 그누보드5
     ".bo_v_con",
     ".view_content",
@@ -228,6 +281,23 @@ def _extract_posts_from_page(page: Page, config: SpamConfig) -> List[Dict[str, s
         except Exception:
             continue
 
+    # 이름 셀렉터가 모두 실패하면 href 패턴 폴백으로 글을 찾는다.
+    if not raw_posts:
+        raw_posts = _extract_posts_by_href(page)
+        if raw_posts:
+            logger.info(f"[AI SPAM] href 패턴 폴백으로 {len(raw_posts)}개 게시물 발견")
+
+    # 중복 제거 (게시판이 목록을 두 번 렌더링하는 경우 대비) 후 처리 개수 제한
+    deduped = []
+    seen = set()
+    for title, href in raw_posts:
+        key = (title, href)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append((title, href))
+    raw_posts = deduped[:MAX_POSTS]
+
     # 각 게시물의 본문 미리보기 추출 (상세 페이지 방문)
     posts = []
     for title, href in raw_posts:
@@ -263,6 +333,18 @@ def classify_posts_ai(posts: List[Dict[str, str]], keywords: List[str]) -> List[
             idx = r.get("index", 0)
             r["method"] = "openai_ai"
             r["title"] = posts[idx].get("title", "") if idx < len(posts) else r.get("title", "")
+            # is_spam(불리언)과 confidence 방향이 어긋나면 불리언을 신뢰해 보정한다.
+            # (GPT가 confidence 의미를 가끔 뒤집어 답해 스팸을 놓치는 것을 방지)
+            is_spam = bool(r.get("is_spam"))
+            try:
+                conf = float(r.get("confidence", 0) or 0)
+            except (TypeError, ValueError):
+                conf = 0.0
+            if is_spam and conf < 0.7:
+                conf = 0.8
+            elif not is_spam and conf > 0.3:
+                conf = 0.1
+            r["confidence"] = conf
             results.append(r)
         return results
 

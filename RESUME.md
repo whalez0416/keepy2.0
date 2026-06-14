@@ -1,15 +1,26 @@
 # 작업 이어가기 (Resume) — Keepy
 
 > 다음 세션에서 이 파일을 먼저 읽으면 현재 상태와 다음 할 일을 파악할 수 있습니다.
-> 마지막 작업 기준일: 2026-06-13
+> 마지막 작업 기준일: 2026-06-14
 
-## ⏭️ 내일 바로 할 일 (2026-06-13에 하다 만 것)
+## ✅ 2026-06-14에 한 것: AI 스팸 헌터 실게시판 테스트 + 버그수정 완료
 
-- **AI 스팸 헌터가 이제 본문까지 읽도록 개선함** (`app/services/ai_spam_classifier.py`).
-  - 변경: 게시판 목록에서 제목+링크 수집 → 각 글 상세페이지 방문해 본문 미리보기(500자) 추출 → 제목+본문(300자)을 GPT에 전달. 한 번에 최대 25개 글 처리(`MAX_POSTS`). `javascript:` 링크 스킵.
-  - 상태: **코드 작성+문법검증(py_compile) 통과까지만 함. 실제 게시판으로 테스트 안 함.**
-  - **내일 할 일: 진짜 병원 게시판 URL로 `/spam/scan` 돌려서 (1) 본문이 제대로 추출되는지, (2) 스팸 판별이 맞는지 확인.** (실제 스팸 글 있는 게시판이면 베스트)
-  - 로컬 실행: `uvicorn app.main:app --reload` 후 `/app`에서 스팸 관리 화면, 또는 API `POST /api/spam/scan`.
+실제 병원 게시판(`https://minhospital.co.kr/index.php/board/list/counsel/101`, 킴스큐류 CMS)으로 테스트하며 `app/services/ai_spam_classifier.py` 다음을 고침:
+
+1. **글 추출 0개 문제** → `td.noticetitle a` 셀렉터 추가 + 이름 셀렉터 다 실패 시 href 패턴 폴백(`_extract_posts_by_href`, `POST_HREF_PATTERNS`: /board/view/·passwordform·wr_id= 등) 추가. 이제 비밀글(javascript:passwordform)도 제목은 수집.
+2. **글 중복 수집**(게시판이 목록 2번 렌더) → (제목,href) 기준 중복 제거 추가.
+3. **본문 추출이 사이트 메뉴를 긁어옴** → 본문 셀렉터에 `.contents`, `.re_contents`(킴스큐류) 추가. 공개글은 본문 정상 추출, 비밀글은 본문 없음(정상).
+4. **정상 글을 스팸 오판(false positive)** ("검강검진 에약변경"=오타 정상글 등) → 프롬프트를 보수적으로 재작성(기본=정상, 명백한 상업/불법 광고만 스팸; 오타·짧은제목·반말 문의는 정상).
+5. **진짜 스팸을 놓치는 버그** → 원인: `confidence` 의미 미정의로 GPT가 값을 뒤집어 답함(is_spam=true인데 confidence=0.0 → 필터 통과). 프롬프트에 confidence 정의(스팸일 확률, is_spam과 같은 방향) 명시 + 모순 예시 수정 + 코드에 is_spam 불리언 신뢰 보정 로직 추가.
+
+검증결과: 실게시판=스팸0(정상, 광고없음). 합성 광고글(대출/비아그라/카지노)=스팸0.95 정확탐지, 정상문의=정상. 2회 연속 일관.
+
+테스트 도구: `scripts/test_spam_scan.py "<게시판URL>"` — 서버/DB 없이 본문추출+GPT판별 결과를 바로 출력.
+환경: playwright chromium은 `NODE_TLS_REJECT_UNAUTHORIZED=0 python -m playwright install chromium`으로 설치함(이 PC TLS 가로채기 때문).
+
+### 다음에 할 일 (AI 스팸 관련)
+- 다른 CMS의 병원 게시판 1~2개로 더 테스트(셀렉터/본문 셀렉터 커버리지 확인). 그누보드/워드프레스 계열은 이미 셀렉터 있음.
+- (선택) 스팸 탐지 시 이메일 알림 실제 발송 경로 점검.
 
 ---
 
