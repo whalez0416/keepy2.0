@@ -241,8 +241,8 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
         {/* Header */}
         <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <Plus className="text-emerald-400" size={24} />
+            <div className="w-12 h-12 rounded-2xl bg-[#9fb2c2]/10 border border-[#9fb2c2]/20 flex items-center justify-center">
+              <Plus className="text-[#c8d4de]" size={24} />
             </div>
             <div>
               <h2 className="text-2xl font-black tracking-tight text-white">{site ? '병원 설정 수정' : '새 병원 등록'}</h2>
@@ -261,7 +261,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
             <div className="space-y-10">
               <section className="space-y-6">
                 <div className="flex items-center gap-3">
-                   <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
+                   <div className="w-1.5 h-4 bg-[#9fb2c2] rounded-full" />
                    <h3 className="text-sm font-black text-slate-300 uppercase tracking-wider">기본 정보</h3>
                 </div>
 
@@ -273,7 +273,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                       name="site_name"
                       value={formData.site_name}
                       onChange={handleChange}
-                      className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
+                      className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all font-bold placeholder:text-slate-700"
                     />
                   </div>
                   <div className="space-y-2">
@@ -285,7 +285,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                         name="org_id"
                         value={formData.org_id || ''}
                         onChange={handleChange}
-                        className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold"
+                        className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all font-bold"
                       >
                         <option value="" disabled>조직 선택</option>
                         {organizations.map(org => (
@@ -297,7 +297,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                         name="hospital_name"
                         value={formData.hospital_name}
                         onChange={handleChange}
-                        className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
+                        className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all font-bold placeholder:text-slate-700"
                         disabled
                       />
                     )}
@@ -309,7 +309,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                       name="homepage_url"
                       value={formData.homepage_url}
                       onChange={handleChange}
-                      className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold text-emerald-400"
+                      className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all font-bold text-[#c8d4de]"
                     />
                   </div>
                 </div>
@@ -318,7 +318,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
               <section className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-4 bg-emerald-500 rounded-full" />
+                    <div className="w-1.5 h-4 bg-[#9fb2c2] rounded-full" />
                     <h3 className="text-sm font-black text-slate-300 uppercase tracking-wider">상담폼 모니터링 ({forms.length})</h3>
                   </div>
                   <div className="flex gap-2">
@@ -329,7 +329,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                     >
                       <Brain size={14} /> AI 자동 탐색 🌟
                     </button>
-                    <button type="button" onClick={addForm} className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 text-xs font-black hover:bg-emerald-500/20 transition-all flex items-center gap-1">
+                    <button type="button" onClick={addForm} className="px-3 py-1.5 bg-[#9fb2c2]/10 text-[#c8d4de] rounded-xl border border-[#9fb2c2]/20 text-xs font-black hover:bg-[#9fb2c2]/20 transition-all flex items-center gap-1">
                       <Plus size={14} /> 추가
                     </button>
                   </div>
@@ -337,10 +337,10 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
 
                 <div className="space-y-3">
                   {forms.map((form, idx) => (
-                    <div key={idx} className={`border rounded-3xl transition-all ${activeFormIndex === idx ? 'bg-emerald-500/5 border-emerald-500/20 p-6' : 'hover:bg-white/[0.02] border-white/5 p-4'}`}>
+                    <div key={idx} className={`border rounded-3xl transition-all ${activeFormIndex === idx ? 'bg-[#9fb2c2]/5 border-[#9fb2c2]/20 p-6' : 'hover:bg-white/[0.02] border-white/5 p-4'}`}>
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer" onClick={() => setActiveFormIndex(activeFormIndex === idx ? null : idx)}>
-                          <FileText size={20} className={activeFormIndex === idx ? 'text-emerald-400' : 'text-slate-500'} />
+                          <FileText size={20} className={activeFormIndex === idx ? 'text-[#c8d4de]' : 'text-slate-500'} />
                           <div className="truncate">
                             <div className="text-sm font-bold text-slate-200">{form.name || `상담폼 ${idx + 1}`}</div>
                             <div className="text-[10px] text-slate-500 truncate">{form.form_url || 'URL 미입력'}</div>
@@ -351,7 +351,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                       {activeFormIndex === idx && (
                         <div className="mt-6 pt-6 border-t border-white/5 space-y-4 animate-in slide-in-from-top-2">
                           <input placeholder="폼 이름" value={form.name} onChange={e => handleFormChange(idx, 'name', e.target.value)} className="w-full glass-compact border border-white/5 rounded-xl px-4 py-2.5 text-sm font-bold" />
-                          <input placeholder="폼 URL" value={form.form_url} onChange={e => handleFormChange(idx, 'form_url', e.target.value)} className="w-full glass-compact border border-white/5 rounded-xl px-4 py-2.5 text-sm text-emerald-400 font-bold" />
+                          <input placeholder="폼 URL" value={form.form_url} onChange={e => handleFormChange(idx, 'form_url', e.target.value)} className="w-full glass-compact border border-white/5 rounded-xl px-4 py-2.5 text-sm text-[#c8d4de] font-bold" />
                           <div className="grid grid-cols-2 gap-3">
                             <input placeholder="이름 셀렉터" value={form.name_selector} onChange={e => handleFormChange(idx, 'name_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
                             <input placeholder="연락처 셀렉터" value={form.phone_selector} onChange={e => handleFormChange(idx, 'phone_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
@@ -529,7 +529,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
           <div className="text-red-400 text-sm font-bold">{error}</div>
           <div className="flex gap-4">
             <button type="button" onClick={onClose} className="px-8 py-3 rounded-2xl font-bold text-slate-400 hover:text-white transition-all">취소</button>
-            <button onClick={handleSubmit} disabled={loading} className="bg-emerald-500 text-white px-10 py-3 rounded-2xl font-black flex items-center gap-2 hover:bg-emerald-600 transition-all shadow-2xl active:scale-95 disabled:opacity-50">
+            <button onClick={handleSubmit} disabled={loading} className="bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] text-[#0a0c0f] px-10 py-3 rounded-2xl font-black flex items-center gap-2 hover:brightness-110 border border-white/40 transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)] active:scale-95 disabled:opacity-50">
               {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={20} />}
               저장하기
             </button>

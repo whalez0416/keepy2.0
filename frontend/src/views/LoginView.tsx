@@ -33,21 +33,23 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegiste
   };
 
   return (
-    <div className="min-h-screen bg-[#080a0f] flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0c0f] flex items-center justify-center p-6 relative overflow-hidden">
       {/* Background Blobs */}
-      <div className="absolute top-1/4 -right-20 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-1/4 -left-20 w-96 h-96 bg-emerald-600/10 blur-[120px] rounded-full pointer-events-none" />
-      
+      <div className="absolute top-1/4 -right-20 w-96 h-96 bg-[#7896b2]/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-1/4 -left-20 w-96 h-96 bg-[#5b6b7a]/10 blur-[120px] rounded-full pointer-events-none" />
+
       <div className="w-full max-w-md animate-in fade-in zoom-in duration-500">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-emerald-500/20 border border-emerald-500/30 mb-6 shadow-2xl shadow-emerald-500/20">
-            <Shield className="text-emerald-400" size={32} />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-b from-[#9fb2c2]/20 to-[#0a0c0f]/60 border border-[#9fb2c2]/30 mb-6 shadow-[inset_0_1px_0_rgba(200,212,222,0.18),0_0_30px_rgba(159,178,194,0.15)]">
+            <Shield className="text-[#c8d4de]" size={32} style={{ filter: 'drop-shadow(0 0 6px rgba(159,178,194,0.4))' }} />
           </div>
-          <h1 className="text-4xl font-black text-white tracking-tighter mb-2">Keepy V2</h1>
+          <h1 className="text-4xl font-black text-white tracking-tighter mb-2 flex items-center justify-center gap-1.5">
+            Keepy<span className="inline-block w-2 h-2 rounded-full bg-[#c8d4de] shadow-[0_0_10px_rgba(159,178,194,0.8)]" />
+          </h1>
           <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">Premium Monitoring Solution</p>
         </div>
 
-        <div className="glass rounded-[32px] border border-white/5 p-8 shadow-2xl">
+        <div className="glass rounded-2xl border border-[#9fb2c2]/10 p-8 shadow-2xl">
           <div className="mb-8">
             <h2 className="text-xl font-bold text-slate-200 mb-1">다시 오신 것을 환영합니다</h2>
             <p className="text-slate-500 text-sm font-medium">계정에 로그인하여 병원 상태를 확인하세요</p>
@@ -64,13 +66,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegiste
             <div className="space-y-2">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">이메일 주소</label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={18} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[#9fb2c2] transition-colors" size={18} />
                 <input
                   required
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
+                  className="w-full glass border border-white/5 rounded-lg py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 focus:border-[#9fb2c2]/40 transition-all font-bold placeholder:text-slate-700"
                   placeholder="admin@hospital.com"
                 />
               </div>
@@ -79,13 +81,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegiste
             <div className="space-y-2">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">비밀번호</label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={18} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[#9fb2c2] transition-colors" size={18} />
                 <input
                   required
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-bold placeholder:text-slate-700"
+                  className="w-full glass border border-white/5 rounded-lg py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 focus:border-[#9fb2c2]/40 transition-all font-bold placeholder:text-slate-700"
                   placeholder="••••••••"
                 />
               </div>
@@ -93,7 +95,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegiste
 
             <button
               disabled={loading}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-2xl shadow-emerald-500/30 active:scale-95 mt-8"
+              className="w-full bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] hover:brightness-110 disabled:opacity-50 text-[#0a0c0f] py-4 rounded-lg font-black flex items-center justify-center gap-3 transition-all border border-white/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_10px_30px_rgba(0,0,0,0.5)] active:scale-95 mt-8"
             >
               {loading ? (
                 <Loader size={20} className="animate-spin" />
@@ -113,7 +115,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegiste
           </div>
           <button
             onClick={onSwitchToRegister}
-            className="text-slate-600 hover:text-emerald-400 text-xs font-bold transition-colors"
+            className="text-slate-600 hover:text-[#9fb2c2] text-xs font-bold transition-colors"
           >
             발급 프로세스 안내 보기
           </button>

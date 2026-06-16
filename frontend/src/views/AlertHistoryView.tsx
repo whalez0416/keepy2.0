@@ -69,7 +69,7 @@ const AlertHistoryView: React.FC = () => {
               onClick={() => setFilter(level)}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 filter === level 
-                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                  ? 'bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] text-[#0a0c0f] hover:brightness-110 border border-white/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)]'
                   : 'hover:bg-white/5 text-slate-400'
               }`}
             >
@@ -82,13 +82,13 @@ const AlertHistoryView: React.FC = () => {
       {/* Filter & Search Bar */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[#c8d4de] transition-colors" size={20} />
           <input 
             type="text" 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="병원명 또는 메시지로 검색..." 
-            className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all placeholder:text-slate-600 font-medium text-white"
+            className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#9fb2c2]/40 outline-none transition-all placeholder:text-slate-600 font-medium text-white"
           />
         </div>
       </div>
@@ -158,7 +158,7 @@ const AlertHistoryView: React.FC = () => {
                   <button 
                     onClick={() => site && window.open(site.homepage_url, '_blank')}
                     title="병원 웹사이트로 이동"
-                    className="p-2.5 glass rounded-xl text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                    className="p-2.5 glass rounded-xl text-slate-500 hover:text-[#c8d4de] hover:bg-[#9fb2c2]/10 transition-all"
                   >
                     <ExternalLink size={18} />
                   </button>

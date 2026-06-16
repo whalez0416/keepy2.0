@@ -107,14 +107,14 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex text-slate-200 bg-[#080a0f] selection:bg-emerald-500/30">
+    <div className="min-h-screen flex text-slate-200 bg-[#080a0f] selection:bg-[#9fb2c2]/25">
       <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); navigate(`/${tab}`); }} onLogout={handleLogout} user={user} />
 
       <main className="flex-1 overflow-y-auto pb-20 md:pb-0 relative">
         <header className="h-16 md:h-24 flex items-center justify-between px-6 md:px-10 sticky top-0 bg-[#080a0f]/60 backdrop-blur-xl z-40 border-b border-white/[0.03]">
           <div className="flex items-center gap-4">
-             <div className="md:hidden w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                <span className="text-emerald-400 font-black text-lg">K</span>
+             <div className="md:hidden w-10 h-10 rounded-xl bg-[#9fb2c2]/20 flex items-center justify-center border border-[#9fb2c2]/30">
+                <span className="text-[#c8d4de] font-black text-lg">K</span>
              </div>
              <h2 className="md:hidden font-bold text-xl tracking-tighter">Keepy</h2>
           </div>
@@ -125,14 +125,14 @@ function App() {
               </div>
             )}
             
-            <button className="p-3 glass rounded-xl text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 transition-all relative">
+            <button className="p-3 glass rounded-xl text-slate-400 hover:text-[#c8d4de] hover:border-[#9fb2c2]/30 transition-all relative">
               <Bell size={20} />
-              <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-emerald-500 rounded-full border-2 border-[#080a0f]" />
+              <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#9fb2c2] rounded-full border-2 border-[#080a0f]" />
             </button>
             
             <button 
               onClick={handleAddSite}
-              className="bg-emerald-500 text-white px-4 py-2.5 md:px-6 md:py-3.5 rounded-2xl font-bold flex items-center gap-2 hover:bg-emerald-600 transition-all shadow-2xl shadow-emerald-500/30 active:scale-95"
+              className="bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] text-[#0a0c0f] px-4 py-2.5 md:px-6 md:py-3.5 rounded-2xl font-bold flex items-center gap-2 hover:brightness-110 transition-all border border-white/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)] active:scale-95"
             >
               <PlusCircle size={20} /> <span className="hidden md:inline">병원 추가</span>
             </button>
@@ -147,7 +147,7 @@ function App() {
               </div>
               <button 
                 onClick={handleLogout}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-2xl glass-morphism border-white/10 flex items-center justify-center font-black text-emerald-400 shadow-2xl hover:border-red-500/50 transition-all overflow-hidden relative group"
+                className="w-10 h-10 md:w-12 md:h-12 rounded-2xl glass-morphism border-white/10 flex items-center justify-center font-black text-[#c8d4de] shadow-2xl hover:border-red-500/50 transition-all overflow-hidden relative group"
                 title="로그아웃"
               >
                 <UserIcon size={24} className="opacity-80 group-hover:scale-0 transition-transform duration-200" />
@@ -172,7 +172,7 @@ function App() {
         </div>
 
         <div className="fixed top-1/4 -right-20 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none -z-10" />
-        <div className="fixed bottom-1/4 -left-20 w-96 h-96 bg-emerald-600/10 blur-[120px] rounded-full pointer-events-none -z-10" />
+        <div className="fixed bottom-1/4 -left-20 w-96 h-96 bg-[#9fb2c2]/10 blur-[120px] rounded-full pointer-events-none -z-10" />
       </main>
 
       <BottomNav activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); navigate(`/${tab}`); }} user={user} />

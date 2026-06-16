@@ -22,7 +22,7 @@ interface Lead {
 const statusConfig: Record<string, { label: string, color: string, icon: any }> = {
   new: { label: '신규 접수', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', icon: Clock },
   in_review: { label: '검토 중', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20', icon: Clock },
-  contacted: { label: '연락 완료', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: CheckSquare },
+  contacted: { label: '연락 완료', color: 'text-[#c8d4de] bg-[#9fb2c2]/10 border-[#9fb2c2]/20', icon: CheckSquare },
   closed: { label: '종료', color: 'text-slate-400 bg-slate-500/10 border-slate-500/20', icon: XCircle },
 };
 
@@ -152,7 +152,7 @@ export default function LeadsAdminView() {
         </div>
         <button
           onClick={handleOpenDirectCreate}
-          className="bg-emerald-500 hover:bg-emerald-600 px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/20 active:scale-95 text-white"
+          className="bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] hover:brightness-110 border border-white/40 px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)] active:scale-95 text-[#0a0c0f]"
         >
           <UserPlus size={18} /> 병원 계정 직접 생성
         </button>
@@ -160,13 +160,13 @@ export default function LeadsAdminView() {
 
       {/* Search Input */}
       <div className="relative group max-w-md">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[#c8d4de] transition-colors" size={20} />
         <input 
           type="text" 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="병원명, 문의자, 이메일, 내용으로 검색..." 
-          className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all placeholder:text-slate-600 font-medium"
+          className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#9fb2c2]/40 outline-none transition-all placeholder:text-slate-600 font-medium"
         />
       </div>
 
@@ -194,7 +194,7 @@ export default function LeadsAdminView() {
                   <td className="p-4">
                     <div className="flex items-center gap-2">
                       <Building size={16} className="text-slate-500" />
-                      <span className="font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">{lead.hospital_name}</span>
+                      <span className="font-bold text-slate-200 group-hover:text-[#c8d4de] transition-colors">{lead.hospital_name}</span>
                     </div>
                   </td>
                   <td className="p-4">
@@ -208,7 +208,7 @@ export default function LeadsAdminView() {
                   </td>
                   <td className="p-4 pr-6 text-right" onClick={(e) => e.stopPropagation()}>
                     <select
-                      className="bg-[#0f111a] border border-white/10 rounded-xl px-3 py-1.5 text-sm font-medium text-slate-300 focus:outline-none focus:border-emerald-500/50"
+                      className="bg-[#0f111a] border border-white/10 rounded-xl px-3 py-1.5 text-sm font-medium text-slate-300 focus:outline-none focus:border-[#9fb2c2]/50"
                       value={lead.status}
                       onChange={(e) => handleStatusChange(lead.id, e.target.value)}
                     >
@@ -253,7 +253,7 @@ export default function LeadsAdminView() {
                 </div>
               </div>
               <div className="flex items-center gap-3 glass p-4 rounded-2xl">
-                <Phone size={18} className="text-emerald-500" />
+                <Phone size={18} className="text-[#9fb2c2]" />
                 <span className="font-bold">{selectedLead.phone_number}</span>
               </div>
               <div className="flex items-center gap-3 glass p-4 rounded-2xl">
@@ -262,13 +262,13 @@ export default function LeadsAdminView() {
               </div>
               <div className="flex items-center gap-3 glass p-4 rounded-2xl">
                 <Globe size={18} className="text-purple-500" />
-                <a href={selectedLead.website_url.startsWith('http') ? selectedLead.website_url : `https://${selectedLead.website_url}`} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+                <a href={selectedLead.website_url.startsWith('http') ? selectedLead.website_url : `https://${selectedLead.website_url}`} target="_blank" rel="noreferrer" className="text-[#c8d4de] hover:underline">
                   {selectedLead.website_url}
                 </a>
               </div>
-              <div className="glass p-4 rounded-2xl border-emerald-500/20">
+              <div className="glass p-4 rounded-2xl border-[#9fb2c2]/20">
                 <span className="text-slate-500 block mb-2">관심 요금제</span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-[#9fb2c2]/30 text-[#c8d4de] bg-[#9fb2c2]/10">
                   {selectedLead.plan}
                 </span>
               </div>
@@ -284,7 +284,7 @@ export default function LeadsAdminView() {
               {selectedLead.status !== 'closed' && (
                 <button
                   onClick={() => handleOpenCreateFromLead(selectedLead)}
-                  className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-600 transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
+                  className="bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] text-[#0a0c0f] px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:brightness-110 border border-white/40 transition-all active:scale-95 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)]"
                 >
                   <UserPlus size={16} /> 병원 계정/요금제 즉시 발급
                 </button>
@@ -312,8 +312,8 @@ export default function LeadsAdminView() {
             </button>
 
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                <UserPlus className="text-emerald-400" size={20} />
+              <div className="w-10 h-10 rounded-xl bg-[#9fb2c2]/20 border border-[#9fb2c2]/30 flex items-center justify-center">
+                <UserPlus className="text-[#c8d4de]" size={20} />
               </div>
               <div>
                 <h3 className="text-xl font-bold text-white">병원 관리자 계정 발급</h3>
@@ -336,7 +336,7 @@ export default function LeadsAdminView() {
                   placeholder="예: 민트치과의원"
                   value={createFormData.hospital_name}
                   onChange={e => setCreateFormData({...createFormData, hospital_name: e.target.value})}
-                  className="w-full glass border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
+                  className="w-full glass border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all"
                 />
               </div>
 
@@ -348,7 +348,7 @@ export default function LeadsAdminView() {
                   placeholder="예: admin@mint.com"
                   value={createFormData.email}
                   onChange={e => setCreateFormData({...createFormData, email: e.target.value})}
-                  className="w-full glass border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
+                  className="w-full glass border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all"
                 />
               </div>
 
@@ -360,7 +360,7 @@ export default function LeadsAdminView() {
                   placeholder="예: keepy1234"
                   value={createFormData.password}
                   onChange={e => setCreateFormData({...createFormData, password: e.target.value})}
-                  className="w-full glass border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-emerald-400 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
+                  className="w-full glass border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-[#c8d4de] outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all"
                 />
               </div>
 
@@ -369,7 +369,7 @@ export default function LeadsAdminView() {
                 <select
                   value={createFormData.plan}
                   onChange={e => setCreateFormData({...createFormData, plan: e.target.value})}
-                  className="w-full glass border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
+                  className="w-full glass border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-slate-200 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all"
                 >
                   <option value="starter">Starter (무료)</option>
                   <option value="type_a">Type A (Basic)</option>
@@ -379,8 +379,8 @@ export default function LeadsAdminView() {
                 </select>
               </div>
 
-              <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-2xl flex items-start gap-3 mt-6">
-                <Shield size={16} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+              <div className="bg-[#9fb2c2]/5 border border-[#9fb2c2]/10 p-4 rounded-2xl flex items-start gap-3 mt-6">
+                <Shield size={16} className="text-[#c8d4de] mt-0.5 flex-shrink-0" />
                 <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
                   계정 생성 시, 해당 병원의 <strong>독립된 작업 공간(Workspace)</strong>이 자동 개설되며, 선택한 요금제 구독 등급이 즉시 활성화 처리됩니다.
                 </p>
@@ -397,7 +397,7 @@ export default function LeadsAdminView() {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                  className="flex-1 py-3 bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] hover:brightness-110 border border-white/40 text-[#0a0c0f] rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)] active:scale-95 disabled:opacity-50"
                 >
                   {creating && <Clock size={14} className="animate-spin" />}
                   계정 발급 완료

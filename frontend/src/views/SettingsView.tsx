@@ -92,7 +92,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onLogout }) => {
                 }}
                 className={`flex-1 lg:flex-none flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                   activeSection === section.id
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                    ? 'bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] text-[#0a0c0f] hover:brightness-110 border border-white/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)]'
                     : section.id === 'logout'
                     ? 'text-red-400 hover:bg-red-500/10'
                     : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
@@ -110,7 +110,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onLogout }) => {
           {activeSection === 'profile' && (
             <div className="glass p-8 rounded-3xl border border-white/5 space-y-8">
               <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-3xl glass-morphism border-white/10 flex items-center justify-center font-black text-emerald-400 text-3xl shadow-2xl">
+                <div className="w-24 h-24 rounded-3xl glass-morphism border-white/10 flex items-center justify-center font-black text-[#c8d4de] text-3xl shadow-2xl">
                   <User size={40} className="opacity-80" />
                 </div>
                 <div>
@@ -190,7 +190,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onLogout }) => {
                     value={newPw}
                     onChange={(e) => setNewPw(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full glass border border-white/5 rounded-2xl py-3.5 px-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-medium text-white"
+                    className="w-full glass border border-white/5 rounded-2xl py-3.5 px-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all font-medium text-white"
                   />
                 </div>
                 <div className="space-y-2">
@@ -200,14 +200,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onLogout }) => {
                     value={confirmPw}
                     onChange={(e) => setConfirmPw(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full glass border border-white/5 rounded-2xl py-3.5 px-4 outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-medium text-white"
+                    className="w-full glass border border-white/5 rounded-2xl py-3.5 px-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all font-medium text-white"
                   />
                 </div>
                 <button
                   type="button"
                   disabled={saving}
                   onClick={handleChangePassword}
-                  className="w-full bg-emerald-500 text-white py-4 rounded-2xl font-bold hover:bg-emerald-600 disabled:opacity-50 transition-all shadow-xl shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] text-[#0a0c0f] py-4 rounded-2xl font-bold hover:brightness-110 border border-white/40 disabled:opacity-50 transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)] active:scale-95 flex items-center justify-center gap-2"
                 >
                   {saving ? <Loader size={20} className="animate-spin" /> : '비밀번호 변경'}
                 </button>

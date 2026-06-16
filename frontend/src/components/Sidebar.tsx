@@ -32,7 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
     <aside className="hidden md:flex w-64 h-screen sticky top-0 glass border-r border-white/5 flex-col z-50">
       <div className="p-8">
         <h1 className="text-2xl font-bold gradient-text flex items-center gap-2 tracking-tight">
-          <Shield className="text-emerald-500 fill-emerald-500/20" size={28} /> Keepy <span className="text-[10px] font-bold text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded-md bg-slate-900/50">V2</span>
+          <Shield className="text-[#9fb2c2] fill-[#9fb2c2]/20" size={28} /> Keepy
         </h1>
       </div>
       
@@ -45,12 +45,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 relative group ${
                 isActive 
-                  ? 'glass bg-emerald-500/10 text-emerald-400 glow-emerald' 
+                  ? 'glass bg-[#9fb2c2]/10 text-[#c8d4de]'
                   : 'hover:bg-white/5 text-slate-400 hover:text-slate-200'
               }`}
             >
               {isActive && (
-                <div className="absolute left-0 w-1 h-6 bg-emerald-500 rounded-r-full shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                <div className="absolute left-0 w-1 h-6 bg-[#9fb2c2] rounded-r-full shadow-[0_0_10px_rgba(159,178,194,0.8)]" />
               )}
               <item.icon size={20} className={`${isActive ? 'scale-110' : 'group-hover:scale-110'} transition-transform duration-300`} />
               <span className="font-bold text-sm">{item.label}</span>
@@ -60,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
       </nav>
 
       <div className="p-4 mt-auto space-y-2">
-        <button className="w-full flex flex-col items-center justify-center gap-2 py-3 px-4 glass border-emerald-500/20 text-emerald-400 rounded-2xl hover:bg-emerald-500/10 transition-all font-bold shadow-lg shadow-emerald-500/5 group">
+        <button className="w-full flex flex-col items-center justify-center gap-2 py-3 px-4 glass border-[#9fb2c2]/20 text-[#c8d4de] rounded-2xl hover:bg-[#9fb2c2]/10 transition-all font-bold shadow-lg shadow-black/40 group">
           <div className="flex items-center gap-2">
             <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
             <span className="text-xs">데이터 마이그레이션</span>

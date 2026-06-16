@@ -101,7 +101,7 @@ const LogDetailModal: React.FC<LogDetailModalProps> = ({ isOpen, onClose, site, 
               href={site.homepage_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex-1 bg-emerald-500 text-white py-4 rounded-2xl font-black text-center flex items-center justify-center gap-2 shadow-2xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
+              className="flex-1 bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] text-[#0a0c0f] py-4 rounded-2xl font-black text-center flex items-center justify-center gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)] hover:brightness-110 border border-white/40 transition-all"
             >
               실제 사이트 방문 <ChevronRight size={18} />
              </a>

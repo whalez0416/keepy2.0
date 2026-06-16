@@ -88,7 +88,7 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
         </div>
         <button 
           onClick={handleAdd}
-          className="bg-emerald-500 hover:bg-emerald-600 px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
+          className="bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] text-[#0a0c0f] px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all hover:brightness-110 border border-white/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)] active:scale-95"
         >
           <Plus size={20} /> {sites.length === 0 ? '첫 병원 등록하기' : '신규 병원 등록'}
         </button>
@@ -97,13 +97,13 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
       {/* Filters & Search */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[#c8d4de] transition-colors" size={20} />
           <input 
             type="text" 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="병원명, URL 또는 그룹으로 검색..." 
-            className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 outline-none transition-all placeholder:text-slate-600 font-medium text-white"
+            className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#9fb2c2]/40 focus:border-[#9fb2c2]/50 outline-none transition-all placeholder:text-slate-600 font-medium text-white"
           />
         </div>
         <button 
@@ -155,7 +155,7 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
                           <span className="truncate max-w-[200px]">{site.homepage_url}</span>
                         </div>
                         {site.form_url && (
-                          <div className="flex items-center gap-2 text-xs text-emerald-400/70 font-medium">
+                          <div className="flex items-center gap-2 text-xs text-[#c8d4de]/70 font-medium">
                             <FileText size={12} className="opacity-50" />
                             <span className="truncate max-w-[200px]">{site.form_url}</span>
                           </div>
@@ -166,7 +166,7 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
                       <div className="flex gap-1.5">
                         <span className="bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-blue-500/20">홈페이지</span>
                         {site.form_url && (
-                          <span className="bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-emerald-500/20">상담폼</span>
+                          <span className="bg-[#9fb2c2]/10 text-[#c8d4de] px-2.5 py-1 rounded-lg text-[10px] font-bold border border-[#9fb2c2]/20">상담폼</span>
                         )}
                       </div>
                     </td>
@@ -182,7 +182,7 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                          <button 
                           onClick={() => handleEdit(site)} 
-                          className="text-slate-400 hover:text-emerald-400 p-2.5 rounded-xl hover:bg-emerald-500/10 transition-all active:scale-90"
+                          className="text-slate-400 hover:text-[#c8d4de] p-2.5 rounded-xl hover:bg-[#9fb2c2]/10 transition-all active:scale-90"
                           title="수정"
                         >
                           <Edit2 size={18} />

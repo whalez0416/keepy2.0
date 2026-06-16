@@ -52,7 +52,7 @@ const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh, onEdit, on
       </div>
       <div className="p-5 space-y-4">
         <div>
-          <h4 className="font-bold text-lg truncate group-hover:text-emerald-400 transition-colors">{site.site_name}</h4>
+          <h4 className="font-bold text-lg truncate group-hover:text-[#c8d4de] transition-colors">{site.site_name}</h4>
           <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium uppercase mt-1">
             <Activity size={10} />
             {site.hospital_name || '일반 병원'}
@@ -65,7 +65,7 @@ const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh, onEdit, on
             href={site.homepage_url} 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors font-semibold"
+            className="flex items-center gap-1 text-[#c8d4de] hover:text-[#dbe3ea] transition-colors font-semibold"
           >
             사이트 방문 <ExternalLink size={12} />
           </a>
@@ -87,7 +87,7 @@ const HospitalCard: React.FC<HospitalCardProps> = ({ site, onRefresh, onEdit, on
           <button 
             onClick={handleManualCheck}
             disabled={checking}
-            className={`px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20 ${checking ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`px-4 py-2.5 bg-gradient-to-b from-[#e9eef2] via-[#b9c4cd] to-[#8b97a1] text-[#0a0c0f] rounded-xl text-xs font-bold hover:brightness-110 border border-white/40 transition-all flex items-center gap-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_24px_rgba(0,0,0,0.5)] ${checking ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <RefreshCw size={14} className={checking ? 'animate-spin' : ''} />
             {checking ? '' : '재점검'}

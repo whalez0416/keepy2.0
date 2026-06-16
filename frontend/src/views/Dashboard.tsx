@@ -92,7 +92,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
   return (
     <div className="p-8 space-y-10 animate-in fade-in slide-up duration-700">
       {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 p-8 rounded-[32px] border border-white/[0.03] relative overflow-hidden group">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-[#9fb2c2]/10 to-blue-500/10 p-8 rounded-[32px] border border-white/[0.03] relative overflow-hidden group">
         <div className="relative z-10">
           <h1 className="text-4xl font-black tracking-tight text-white flex items-center gap-3">
             {user?.role === 'superadmin' && selectedOrgId === 'all' 
@@ -104,7 +104,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
           </p>
         </div>
         <div className="relative z-10 text-right">
-          <div className="flex items-center gap-2 text-emerald-400 font-black text-xl justify-end">
+          <div className="flex items-center gap-2 text-[#c8d4de] font-black text-xl justify-end">
             <Clock size={20} />
             {currentTime.toLocaleTimeString('ko-KR', { hour12: true })}
           </div>
@@ -112,7 +112,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
              <Calendar size={12} /> {currentTime.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
           </div>
         </div>
-        <div className="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full group-hover:bg-emerald-500/20 transition-all duration-1000" />
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-[#9fb2c2]/10 blur-[80px] rounded-full group-hover:bg-[#9fb2c2]/20 transition-all duration-1000" />
       </div>
 
       {/* Stats Grid */}
@@ -191,11 +191,11 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold flex items-center gap-2 text-white">
-              <Shield size={24} className="text-emerald-500" /> 실시간 감시 현황
+              <Shield size={24} className="text-[#9fb2c2]" /> 실시간 감시 현황
             </h3>
             <button 
               onClick={fetchData} 
-              className="p-2 glass rounded-xl text-slate-500 hover:text-emerald-400 hover:rotate-180 transition-all duration-500"
+              className="p-2 glass rounded-xl text-slate-500 hover:text-[#c8d4de] hover:rotate-180 transition-all duration-500"
             >
               <RefreshCw size={18} />
             </button>

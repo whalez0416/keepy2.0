@@ -31,10 +31,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, user }) 
           key={item.id}
           onClick={() => setActiveTab(item.id)}
           className={`flex flex-col items-center gap-1 transition-all px-3 py-1 rounded-xl ${
-            activeTab === item.id ? 'text-emerald-400 scale-110' : 'text-slate-500'
+            activeTab === item.id ? 'text-[#c8d4de] scale-110' : 'text-slate-500'
           }`}
         >
-          <item.icon size={22} className={activeTab === item.id ? 'drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]' : ''} />
+          <item.icon size={22} className={activeTab === item.id ? 'drop-shadow-[0_0_8px_rgba(159,178,194,0.5)]' : ''} />
           <span className="text-[10px] font-bold tracking-tight">{item.label}</span>
         </button>
       ))}

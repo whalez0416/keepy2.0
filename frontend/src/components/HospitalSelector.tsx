@@ -29,9 +29,9 @@ const HospitalSelector: React.FC<HospitalSelectorProps> = ({ onSelect, selectedO
     <div className="relative">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-white/[0.05] hover:border-emerald-500/30 transition-all text-sm font-bold group"
+        className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-white/[0.05] hover:border-[#9fb2c2]/30 transition-all text-sm font-bold group"
       >
-        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+        <div className="w-8 h-8 rounded-xl bg-[#9fb2c2]/10 flex items-center justify-center text-[#c8d4de]">
           {selectedOrgId === 'all' ? <Globe size={16} /> : <Building2 size={16} />}
         </div>
         <div className="text-left">
@@ -57,7 +57,7 @@ const HospitalSelector: React.FC<HospitalSelectorProps> = ({ onSelect, selectedO
                   setIsOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-                  selectedOrgId === 'all' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  selectedOrgId === 'all' ? 'bg-[#9fb2c2]/10 text-[#c8d4de]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -78,7 +78,7 @@ const HospitalSelector: React.FC<HospitalSelectorProps> = ({ onSelect, selectedO
                       setIsOpen(false);
                     }}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-                      selectedOrgId === org.id ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      selectedOrgId === org.id ? 'bg-[#9fb2c2]/10 text-[#c8d4de]' : 'text-slate-400 hover:bg-white/5 hover:text-white'
                     }`}
                   >
                     <div className="flex items-center gap-3">
