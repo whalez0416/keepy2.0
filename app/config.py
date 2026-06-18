@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     HOMEPAGE_FAIL_THRESHOLD: int = 2
     FORM_FAIL_THRESHOLD: int = 1
 
+    # 스크린샷 보존 기간(일). 이 기간이 지난 점검 스크린샷은 매일 자동 삭제된다.
+    # 보관이 필요한 스크린샷은 사용자가 로그 상세에서 다운로드해 따로 보관한다.
+    SCREENSHOT_RETENTION_DAYS: int = int(os.getenv("SCREENSHOT_RETENTION_DAYS", "30"))
+
     # AI 스팸 분류 (OpenAI / GPT API)
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")

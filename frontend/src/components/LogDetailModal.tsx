@@ -1,6 +1,6 @@
-import React from 'react';
-import { X, AlertCircle, Clock, Globe, Camera, RefreshCw, ChevronRight } from 'lucide-react';
-import { Site, SiteCheckLog } from '../lib/api';
+import React, { useState, useEffect } from 'react';
+import { X, AlertCircle, Clock, Globe, Camera, RefreshCw, ChevronRight, Download } from 'lucide-react';
+import { Site, SiteCheckLog, authApiInstance } from '../lib/api';
 
 interface LogDetailModalProps {
   isOpen: boolean;
@@ -10,6 +10,44 @@ interface LogDetailModalProps {
 }
 
 const LogDetailModal: React.FC<LogDetailModalProps> = ({ isOpen, onClose, site, latestLog }) => {
+  const [shotUrl, setShotUrl] = useState<string | null>(null);
+  const [shotExpired, setShotExpired] = useState(false);
+
+  // 스크린샷은 인증이 필요한 엔드포인트에서 blob으로 받아 objectURL로 표시한다.
+  useEffect(() => {
+    let revoked: string | null = null;
+    let cancelled = false;
+    setShotUrl(null);
+    setShotExpired(false);
+    if (isOpen && latestLog?.id && latestLog?.screenshot_path) {
+      authApiInstance
+        .get(`/logs/screenshot/${latestLog.id}`, { responseType: 'blob' })
+        .then((res) => {
+          if (cancelled) return;
+          const url = URL.createObjectURL(res.data);
+          revoked = url;
+          setShotUrl(url);
+        })
+        .catch(() => {
+          if (!cancelled) setShotExpired(true);
+        });
+    }
+    return () => {
+      cancelled = true;
+      if (revoked) URL.revokeObjectURL(revoked);
+    };
+  }, [isOpen, latestLog?.id, latestLog?.screenshot_path]);
+
+  const handleDownloadShot = () => {
+    if (!shotUrl) return;
+    const a = document.createElement('a');
+    a.href = shotUrl;
+    a.download = `keepy_screenshot_site${site?.id}_log${latestLog?.id}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   if (!isOpen || !site) return null;
 
   const isError = latestLog?.status !== 'success';
@@ -74,23 +112,39 @@ const LogDetailModal: React.FC<LogDetailModalProps> = ({ isOpen, onClose, site, 
 
           {/* Visual Proof */}
           <div className="space-y-3">
-             <div className="flex items-center gap-2 text-slate-500 ml-1">
-                <Camera size={14} />
-                <span className="text-[10px] font-black uppercase tracking-widest">장애 시점 스크린샷 (Visual Proof)</span>
+             <div className="flex items-center justify-between ml-1">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Camera size={14} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">장애 시점 스크린샷 (Visual Proof)</span>
+                </div>
+                {shotUrl && (
+                  <button
+                    onClick={handleDownloadShot}
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-[#c8d4de] hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all"
+                  >
+                    <Download size={13} /> 다운로드(보관)
+                  </button>
+                )}
              </div>
              <div className="aspect-video rounded-[32px] bg-slate-900 overflow-hidden border border-white/10 relative group">
-                {latestLog?.screenshot_path ? (
-                  <img src={`/api/logs/screenshot/${latestLog.id}`} alt="Failure Screenshot" className="w-full h-full object-cover" />
+                {shotUrl ? (
+                  <img src={shotUrl} alt="Failure Screenshot" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-slate-700 bg-slate-900/50">
                     <Camera size={48} strokeWidth={1} className="mb-2 opacity-20" />
-                    <p className="text-sm italic font-medium opacity-40">캡쳐된 데이터가 없습니다.</p>
+                    <p className="text-sm italic font-medium opacity-40">
+                      {shotExpired ? '보존 기간이 지나 삭제된 스크린샷입니다.' : '캡쳐된 데이터가 없습니다.'}
+                    </p>
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
                    <p className="text-xs text-white/60 font-medium">점검 시스템: Playwright Agent (Chrome)</p>
                 </div>
              </div>
+             <p className="text-[11px] text-slate-500 leading-relaxed ml-1">
+                ⓘ 스크린샷은 저장 공간 관리를 위해 <b className="text-slate-400">30일이 지나면 자동으로 삭제</b>됩니다.
+                계속 보관하려면 위 <b className="text-slate-400">다운로드(보관)</b> 버튼으로 내려받아 주세요.
+             </p>
           </div>
 
           <div className="flex gap-4">

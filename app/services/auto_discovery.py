@@ -13,6 +13,7 @@ from typing import Optional, Dict, Any, List
 from playwright.sync_api import sync_playwright, Page, Browser
 from urllib.parse import urljoin, urlparse
 from ..utils.logger import get_logger
+from .browser_pool import browser_semaphore
 
 logger = get_logger("auto_discovery")
 
@@ -232,109 +233,111 @@ def discover_site(homepage_url: str) -> Dict[str, Any]:
     }
     
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            )
-            page = context.new_page()
-            
-            # 1. 홈페이지 접근
-            logger.info(f"[AUTO-DISCOVERY] 홈페이지 로드 중...")
-            try:
-                page.goto(homepage_url, timeout=30000, wait_until="domcontentloaded")
-                page.wait_for_timeout(2000)
-            except Exception as e:
-                result["error"] = f"홈페이지 접근 실패: {str(e)}"
-                browser.close()
-                return result
-            
-            # 2. 팝업/오버레이 닫기 시도
-            try:
-                page.evaluate("() => { document.querySelectorAll('.btn_close, .close_btn, #close, [title=\"닫기\"], .popup_close').forEach(el => el.click()); }")
-                page.wait_for_timeout(500)
-            except Exception:
-                pass
-            
-            # 3. 홈페이지 자체가 폼인지 확인
-            if _has_form_fields(page):
-                logger.info(f"[AUTO-DISCOVERY] 홈페이지 자체에서 폼 필드 발견")
-                selectors = _detect_selectors(page)
-                if any(v for v in selectors.values()):
-                    result["discovered_forms"].append({
-                        "url": homepage_url,
-                        "link_text": "홈페이지 메인 폼",
-                        "selectors": selectors,
-                        "success_text": "완료",
-                        "confidence": 0.6
-                    })
-            
-            # 4. 상담폼 링크 탐색
-            form_links = _find_form_links(page, homepage_url)
-            logger.info(f"[AUTO-DISCOVERY] 상담폼 후보 링크 {len(form_links)}개 발견")
-            
-            # 5. 각 후보 페이지 방문하여 셀렉터 탐지
-            checked_count = 0
-            for link_info in form_links:
-                if checked_count >= 5:  # 최대 5개 페이지만 탐색
-                    break
-                
-                form_url = link_info["url"]
-                if form_url == homepage_url:
-                    continue
-                
-                logger.info(f"[AUTO-DISCOVERY] 폼 페이지 탐색: {form_url}")
-                
+        # 동시 Chromium 폭주/누수 방지: 세마포어로 직렬화 + try/finally로 항상 닫기.
+        with browser_semaphore:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
                 try:
-                    page.goto(form_url, timeout=20000, wait_until="domcontentloaded")
-                    page.wait_for_timeout(1500)
-                    
-                    # 팝업 닫기
+                    context = browser.new_context(
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    )
+                    page = context.new_page()
+
+                    # 1. 홈페이지 접근
+                    logger.info(f"[AUTO-DISCOVERY] 홈페이지 로드 중...")
                     try:
-                        page.evaluate("() => { document.querySelectorAll('.btn_close, .close_btn, #close, [title=\"닫기\"]').forEach(el => el.click()); }")
+                        page.goto(homepage_url, timeout=30000, wait_until="domcontentloaded")
+                        page.wait_for_timeout(2000)
+                    except Exception as e:
+                        result["error"] = f"홈페이지 접근 실패: {str(e)}"
+                        return result
+
+                    # 2. 팝업/오버레이 닫기 시도
+                    try:
+                        page.evaluate("() => { document.querySelectorAll('.btn_close, .close_btn, #close, [title=\"닫기\"], .popup_close').forEach(el => el.click()); }")
                         page.wait_for_timeout(500)
                     except Exception:
                         pass
-                    
-                    if not _has_form_fields(page):
-                        logger.debug(f"  폼 필드 없음, 건너뜀: {form_url}")
-                        checked_count += 1
-                        continue
-                    
-                    selectors = _detect_selectors(page)
-                    filled_count = sum(1 for v in selectors.values() if v is not None)
-                    
-                    if filled_count >= 2:  # 최소 2개 이상의 셀렉터가 탐지되면 유효한 폼으로 판단
-                        confidence = min(1.0, filled_count / 5.0)
-                        success_text = _detect_success_text(page, selectors.get("submit_selector"))
-                        
-                        result["discovered_forms"].append({
-                            "url": form_url,
-                            "link_text": link_info["text"],
-                            "selectors": selectors,
-                            "success_text": success_text,
-                            "confidence": round(confidence, 2),
-                            "selector_count": filled_count
-                        })
-                        logger.info(f"  ✅ 유효한 폼 발견! 셀렉터 {filled_count}개, 신뢰도 {confidence:.0%}")
-                    
-                    checked_count += 1
-                    
-                except Exception as e:
-                    logger.debug(f"  페이지 탐색 실패: {form_url} → {e}")
-                    checked_count += 1
-                    continue
-            
-            browser.close()
-        
+
+                    # 3. 홈페이지 자체가 폼인지 확인
+                    if _has_form_fields(page):
+                        logger.info(f"[AUTO-DISCOVERY] 홈페이지 자체에서 폼 필드 발견")
+                        selectors = _detect_selectors(page)
+                        if any(v for v in selectors.values()):
+                            result["discovered_forms"].append({
+                                "url": homepage_url,
+                                "link_text": "홈페이지 메인 폼",
+                                "selectors": selectors,
+                                "success_text": "완료",
+                                "confidence": 0.6
+                            })
+
+                    # 4. 상담폼 링크 탐색
+                    form_links = _find_form_links(page, homepage_url)
+                    logger.info(f"[AUTO-DISCOVERY] 상담폼 후보 링크 {len(form_links)}개 발견")
+
+                    # 5. 각 후보 페이지 방문하여 셀렉터 탐지
+                    checked_count = 0
+                    for link_info in form_links:
+                        if checked_count >= 5:  # 최대 5개 페이지만 탐색
+                            break
+
+                        form_url = link_info["url"]
+                        if form_url == homepage_url:
+                            continue
+
+                        logger.info(f"[AUTO-DISCOVERY] 폼 페이지 탐색: {form_url}")
+
+                        try:
+                            page.goto(form_url, timeout=20000, wait_until="domcontentloaded")
+                            page.wait_for_timeout(1500)
+
+                            # 팝업 닫기
+                            try:
+                                page.evaluate("() => { document.querySelectorAll('.btn_close, .close_btn, #close, [title=\"닫기\"]').forEach(el => el.click()); }")
+                                page.wait_for_timeout(500)
+                            except Exception:
+                                pass
+
+                            if not _has_form_fields(page):
+                                logger.debug(f"  폼 필드 없음, 건너뜀: {form_url}")
+                                checked_count += 1
+                                continue
+
+                            selectors = _detect_selectors(page)
+                            filled_count = sum(1 for v in selectors.values() if v is not None)
+
+                            if filled_count >= 2:  # 최소 2개 이상의 셀렉터가 탐지되면 유효한 폼으로 판단
+                                confidence = min(1.0, filled_count / 5.0)
+                                success_text = _detect_success_text(page, selectors.get("submit_selector"))
+
+                                result["discovered_forms"].append({
+                                    "url": form_url,
+                                    "link_text": link_info["text"],
+                                    "selectors": selectors,
+                                    "success_text": success_text,
+                                    "confidence": round(confidence, 2),
+                                    "selector_count": filled_count
+                                })
+                                logger.info(f"  ✅ 유효한 폼 발견! 셀렉터 {filled_count}개, 신뢰도 {confidence:.0%}")
+
+                            checked_count += 1
+
+                        except Exception as e:
+                            logger.debug(f"  페이지 탐색 실패: {form_url} → {e}")
+                            checked_count += 1
+                            continue
+                finally:
+                    browser.close()
+
         # 신뢰도 순으로 정렬
         result["discovered_forms"].sort(key=lambda x: x.get("confidence", 0), reverse=True)
         result["success"] = True
-        
+
         logger.info(f"[AUTO-DISCOVERY] 완료. 유효한 폼 {len(result['discovered_forms'])}개 발견")
-        
+
     except Exception as e:
         result["error"] = str(e)
         logger.error(f"[AUTO-DISCOVERY] 오류 발생: {e}")
-    
+
     return result

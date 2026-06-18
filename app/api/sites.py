@@ -4,7 +4,7 @@ from typing import List
 from ..db import get_db
 from .. import models, schemas
 from ..services.scheduler_service import update_site_jobs, remove_site_jobs
-from .auth import get_current_user
+from .auth import get_current_user, require_org_writer
 
 router = APIRouter(tags=["sites"])
 
@@ -19,7 +19,10 @@ def create_site(site: schemas.SiteCreate, db: Session = Depends(get_db), current
         if not membership:
             raise HTTPException(status_code=403, detail="사용자가 속한 조직이 없습니다.")
         org_id = membership.org_id
-    
+
+    # 쓰기 권한 확인(VIEWER 차단)
+    require_org_writer(db, current_user, org_id)
+
     # Site 데이터 추출 (DB 모델에 없는 필드 제외)
     exclude_fields = {"form_configs", "spam_configs", "org_id", "expected_phone", "expected_kakao_url"}
     site_data = site.model_dump(exclude=exclude_fields)
@@ -86,7 +89,10 @@ def update_site(site_id: int, site_update: schemas.SiteUpdate, db: Session = Dep
     db_site = query.first()
     if not db_site:
         raise HTTPException(status_code=404, detail="Site not found or access denied")
-        
+
+    # 쓰기 권한 확인(VIEWER 차단)
+    require_org_writer(db, current_user, db_site.org_id)
+
     update_data = site_update.model_dump(exclude_unset=True, exclude={"form_configs", "spam_configs"})
     
     # Superadmin만 조직 변경 가능
@@ -135,7 +141,10 @@ def deactivate_site(site_id: int, db: Session = Depends(get_db), current_user: m
     db_site = query.first()
     if not db_site:
         raise HTTPException(status_code=404, detail="Site not found or access denied")
-    
+
+    # 쓰기 권한 확인(VIEWER 차단)
+    require_org_writer(db, current_user, db_site.org_id)
+
     db_site.is_active = False
     db.commit()
     remove_site_jobs(site_id)

@@ -1,6 +1,10 @@
+import os
+import time
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from ..scheduler import scheduler
-from ..models import Site, FormConfig
+from ..config import settings
+from ..models import Site, FormConfig, Log
 from .homepage_checker import check_homepage
 from .form_checker import check_form
 from .ai_spam_classifier import run_ai_spam_hunter
@@ -185,10 +189,56 @@ def remove_site_jobs(site_id: int):
         if job.id.startswith(f"site_{site_id}_"):
             scheduler.remove_job(job.id)
 
+def cleanup_old_screenshots():
+    """보존기간(SCREENSHOT_RETENTION_DAYS)이 지난 점검 스크린샷을 삭제한다.
+
+    파일은 mtime 기준으로 지우고, 만료된 로그의 screenshot_path도 비워(끊긴 이미지
+    링크 방지) 둔다. 보관이 필요한 스크린샷은 사용자가 미리 다운로드해 따로 보관한다.
+    """
+    retention = settings.SCREENSHOT_RETENTION_DAYS
+    cutoff_ts = time.time() - retention * 86400
+    screenshot_dir = os.path.join("app", "static", "screenshots")
+    removed = 0
+    if os.path.isdir(screenshot_dir):
+        for fn in os.listdir(screenshot_dir):
+            fp = os.path.join(screenshot_dir, fn)
+            try:
+                if os.path.isfile(fp) and os.path.getmtime(fp) < cutoff_ts:
+                    os.remove(fp)
+                    removed += 1
+            except OSError:
+                pass
+
+    db = SessionLocal()
+    try:
+        cutoff_dt = datetime.utcnow() - timedelta(days=retention)
+        db.query(Log).filter(
+            Log.checked_at < cutoff_dt,
+            Log.screenshot_path.isnot(None),
+        ).update({Log.screenshot_path: None}, synchronize_session=False)
+        db.commit()
+    except Exception as e:
+        logger.error(f"스크린샷 로그 경로 정리 중 오류: {e}")
+    finally:
+        db.close()
+    logger.info(f"[정리] 보존 {retention}일 초과 스크린샷 {removed}개 삭제 완료")
+
+
 def init_all_jobs():
     db = SessionLocal()
     active_sites = db.query(Site).filter(Site.is_active == True).all()
     for site in active_sites:
         update_site_jobs(site)
     db.close()
+
+    # 전역(사이트 무관) 작업: 스크린샷 자동 정리 — 매일 새벽 5시 30분
+    scheduler.add_job(
+        cleanup_old_screenshots,
+        'cron',
+        hour=5,
+        minute=30,
+        id="global_screenshot_cleanup",
+        replace_existing=True,
+    )
+
     logger.debug(f"활성 상태인 {len(active_sites)}개 사이트의 작업 초기화 완료")

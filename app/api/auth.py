@@ -76,6 +76,31 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
+
+# 조직 내에서 '쓰기'가 허용되는 역할. VIEWER는 읽기 전용.
+WRITER_ROLES = {
+    models.MembershipRole.OWNER,
+    models.MembershipRole.ADMIN,
+    models.MembershipRole.EDITOR,
+}
+
+
+def require_org_writer(db: Session, user: models.User, org_id: int):
+    """해당 조직에 대해 쓰기 권한이 있는지 확인하고, 없으면 403.
+
+    SUPERADMIN(운영자)은 항상 허용. 일반 사용자는 그 조직의 멤버이면서 역할이
+    OWNER/ADMIN/EDITOR일 때만 허용(VIEWER는 읽기 전용).
+    """
+    if user.role == models.UserRole.SUPERADMIN:
+        return
+    membership = db.query(models.OrganizationMember).filter(
+        models.OrganizationMember.org_id == org_id,
+        models.OrganizationMember.user_id == user.id,
+    ).first()
+    if not membership or membership.role not in WRITER_ROLES:
+        raise HTTPException(status_code=403, detail="쓰기 권한이 없습니다. (뷰어 권한)")
+
+
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()

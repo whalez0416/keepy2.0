@@ -5,7 +5,7 @@ from .. import models, schemas
 from ..services.homepage_checker import check_homepage
 from ..services.form_checker import check_form
 from ..services.alert_service import handle_check_result
-from .auth import get_current_user
+from .auth import get_current_user, require_org_writer
 
 router = APIRouter(tags=["checks"])
 
@@ -18,6 +18,9 @@ def run_manual_check(site_id: int, db: Session = Depends(get_db), current_user: 
     site = query.first()
     if not site:
         raise HTTPException(status_code=404, detail="Site not found or access denied")
+
+    # 수동 점검은 자원을 쓰는 동작이므로 쓰기 권한 보유자만 허용(VIEWER 차단)
+    require_org_writer(db, current_user, site.org_id)
 
     # Run homepage check
     h_log = check_homepage(db, site)

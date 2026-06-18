@@ -11,7 +11,8 @@ from ..db import get_db
 from .. import models, schemas
 from ..services.ai_spam_classifier import run_ai_spam_hunter, classify_posts_ai
 from ..utils.logger import get_logger
-from .auth import get_current_user
+from ..utils.url_guard import is_public_url
+from .auth import get_current_user, require_org_writer
 
 logger = get_logger("api_spam")
 
@@ -45,7 +46,11 @@ def scan_board(request: SpamScanRequest, current_user: models.User = Depends(get
     게시판 URL을 직접 입력하여 스팸을 즉시 스캔합니다 (임시/테스트용).
     """
     logger.info(f"[API SPAM] 즉시 스캔 요청: {request.board_url} (by {current_user.email})")
-    
+
+    # SSRF 방어: 내부망/메타데이터 주소로의 요청 차단
+    if not is_public_url(request.board_url):
+        raise HTTPException(status_code=400, detail="내부망/사설 주소는 스캔할 수 없습니다.")
+
     # 임시 config 객체 생성
     class TempConfig:
         site_id = 0
@@ -97,9 +102,11 @@ def create_spam_config(config: SpamConfigCreate, db: Session = Depends(get_db), 
             models.OrganizationMember.user_id == current_user.id
         )
     
-    if not site_query.first():
+    site = site_query.first()
+    if not site:
         raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
-    
+    require_org_writer(db, current_user, site.org_id)
+
     db_config = models.SpamConfig(**config.model_dump())
     db.add(db_config)
     db.commit()
@@ -121,9 +128,11 @@ def run_spam_config(config_id: int, db: Session = Depends(get_db), current_user:
             models.OrganizationMember.user_id == current_user.id
         )
     
-    if not site_query.first():
+    site = site_query.first()
+    if not site:
         raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
-    
+    require_org_writer(db, current_user, site.org_id)
+
     result = run_ai_spam_hunter(db, config)
     return result
 
@@ -142,9 +151,11 @@ def delete_spam_config(config_id: int, db: Session = Depends(get_db), current_us
             models.OrganizationMember.user_id == current_user.id
         )
     
-    if not site_query.first():
+    site = site_query.first()
+    if not site:
         raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
-    
+    require_org_writer(db, current_user, site.org_id)
+
     db.delete(config)
     db.commit()
     return {"status": "deleted"}

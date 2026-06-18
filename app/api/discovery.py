@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from ..services.auto_discovery import discover_site
 from ..utils.logger import get_logger
+from ..utils.url_guard import is_public_url
 from .. import models
 from .auth import get_current_user
 
@@ -40,6 +41,10 @@ def run_discovery(request: DiscoveryRequest, current_user: models.User = Depends
     
     if not request.homepage_url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="유효한 URL을 입력해주세요 (http:// 또는 https:// 로 시작)")
-    
+
+    # SSRF 방어: 내부망/메타데이터 주소로의 요청 차단
+    if not is_public_url(request.homepage_url):
+        raise HTTPException(status_code=400, detail="내부망/사설 주소는 점검할 수 없습니다.")
+
     result = discover_site(request.homepage_url)
     return result
