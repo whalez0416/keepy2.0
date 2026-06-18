@@ -27,7 +27,7 @@
 
 ### ⚠️ 다음 할 일 (우선순위)
 1. ~~이 변경 묶음 커밋~~ → **완료 `7efdfe6`**.
-2. **SMTP 실제값**: `.env`의 `SMTP_USER`/`SMTP_PASSWORD`가 아직 placeholder → Gmail 앱 비번 넣어야 실제 발송. (넣은 뒤 실메일 1건 발송 테스트 권장)
+2. ~~SMTP 실제값~~ → **완료 (2026-06-18)**: `.env`에 `chjandhot@gmail.com` + 앱비번 입력, 실메일 1건 발송 성공 확인. 발송 중 **비ASCII 호스트명(한글 PC명) EHLO 인코딩 버그** 발견·수정(`email_service` local_hostname='localhost' 고정, 커밋 `b4c8ab1`). ※ 배포 환경(Render)에도 동일 SMTP 환경변수 넣어야 함.
 3. 각 고객 온보딩 시 **설정>알림 수신에 병원 담당자 이메일 입력** 필수(안 넣으면 운영자에게만 감).
 4. (선택) SMS/카카오 알림톡 게이트웨이 연동하면 notify_phones 실발송 가능.
 5. 랜딩·앱의 `02-1234-5678` 실제 번호 교체.
