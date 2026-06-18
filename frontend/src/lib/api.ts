@@ -41,6 +41,7 @@ export interface FormConfig {
   form_url: string;
   check_interval_minutes: number;
   expected_success_text?: string;
+  submit_test?: boolean; // true일 때만 실제 제출(기본 false=게시판 오염 방지 미제출 점검)
   name_selector?: string;
   phone_selector?: string;
   subject_selector?: string;

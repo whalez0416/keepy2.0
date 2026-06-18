@@ -106,6 +106,9 @@ class FormConfig(Base):
     form_url = Column(String, nullable=False)
     check_interval_minutes = Column(Integer, default=60)
     expected_success_text = Column(String, nullable=True)
+    # 실제 제출 여부. 기본 False = 제출하지 않고 폼이 살아있는지만 점검(고객 게시판 오염 방지).
+    # True = 실제로 제출(전용 테스트 게시판 등 고객이 동의한 경우에만 권장).
+    submit_test = Column(Boolean, default=False)
     
     # Form Selectors
     name_selector = Column(String, nullable=True)

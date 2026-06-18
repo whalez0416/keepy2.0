@@ -22,6 +22,7 @@ class FormConfigBase(BaseModel):
     form_url: str
     check_interval_minutes: int = 60
     expected_success_text: Optional[str] = None
+    submit_test: bool = False  # True일 때만 실제 제출(기본은 게시판 오염 방지 위해 미제출 점검)
     name_selector: Optional[str] = None
     phone_selector: Optional[str] = None
     subject_selector: Optional[str] = None

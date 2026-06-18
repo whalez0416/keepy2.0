@@ -145,11 +145,13 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
   };
 
   const addForm = () => {
-    setForms([...forms, { 
-      name: `상담폼 ${forms.length + 1}`, 
-      form_url: '', 
+    setForms([...forms, {
+      name: `상담폼 ${forms.length + 1}`,
+      form_url: '',
       check_interval_minutes: 60,
-      is_active: true 
+      expected_success_text: '',
+      submit_test: false,
+      is_active: true
     }]);
     setActiveFormIndex(forms.length);
   };
@@ -360,6 +362,14 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                             <input placeholder="동의 체크박스 셀렉터" value={form.agreement_selector} onChange={e => handleFormChange(idx, 'agreement_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
                             <input placeholder="제출 버튼 셀렉터" value={form.submit_selector} onChange={e => handleFormChange(idx, 'submit_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
                           </div>
+                          <input placeholder="성공 메시지 (예: 등록되었습니다) — 폼 점검 정확도↑" value={form.expected_success_text || ''} onChange={e => handleFormChange(idx, 'expected_success_text', e.target.value)} className="w-full glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                          <label className="flex items-start gap-3 p-3 rounded-xl border border-white/5 glass-compact cursor-pointer">
+                            <input type="checkbox" checked={!!form.submit_test} onChange={e => handleFormChange(idx, 'submit_test', e.target.checked)} className="mt-0.5 accent-[#9fb2c2]" />
+                            <span className="text-xs text-slate-400 leading-relaxed">
+                              <b className="text-slate-200">실제 제출까지 점검</b> — 켜면 점검 시 테스트 글이 실제로 게시판에 등록됩니다.
+                              <span className="text-amber-400/80"> 끄면(기본) 폼이 작성 가능한지만 확인하고 제출하지 않아 게시판이 오염되지 않습니다.</span>
+                            </span>
+                          </label>
                         </div>
                       )}
                     </div>

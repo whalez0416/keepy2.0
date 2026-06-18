@@ -36,19 +36,29 @@ def run_light_migrations():
     """
     from sqlalchemy import inspect, text
 
-    # (table, column, DDL 타입) — nullable 컬럼만 추가하므로 기존 행에 안전
+    # (table, column, DDL 타입) — nullable/기본값 컬럼만 추가하므로 기존 행에 안전.
+    # 기본값은 SQLite/Postgres 모두에서 유효한 표현만 사용(boolean은 false).
     pending = [
         ("organizations", "notify_emails", "TEXT"),
         ("organizations", "notify_phones", "TEXT"),
+        ("form_configs", "submit_test", "BOOLEAN DEFAULT false"),
     ]
 
     inspector = inspect(engine)
-    with engine.begin() as conn:
-        for table, column, coltype in pending:
-            try:
-                existing_cols = {c["name"] for c in inspector.get_columns(table)}
-            except Exception:
-                # 테이블 자체가 아직 없으면 create_all이 처리하므로 건너뜀
-                continue
-            if column not in existing_cols:
+    for table, column, coltype in pending:
+        try:
+            existing_cols = {c["name"] for c in inspector.get_columns(table)}
+        except Exception:
+            # 테이블 자체가 아직 없으면 create_all이 처리하므로 건너뜀
+            continue
+        if column in existing_cols:
+            continue
+        # 각 ALTER를 독립 트랜잭션 + try/except로 감싼다: 동시 부팅(여러 워커)에서
+        # 한 워커가 먼저 추가해 'duplicate column'이 나도 부팅이 죽지 않도록.
+        try:
+            with engine.begin() as conn:
                 conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {coltype}'))
+        except Exception as e:
+            # 이미 다른 워커가 추가했거나 경합 — 무시(다음 부팅엔 존재 체크에서 걸러짐)
+            from .utils.logger import get_logger
+            get_logger("db").debug(f"마이그레이션 ADD COLUMN {table}.{column} 건너뜀: {e}")

@@ -126,61 +126,75 @@ def check_form(db: Session, form_config: FormConfig):
                     else:
                         page.fill(form_config.message_selector, "[KEEPY_TEST] 자동 점검 메시지입니다")
                 
-                # 3. 제출 버튼 클릭
-                pre_submit_url = page.url
-                if form_config.submit_selector:
-                    page.click(form_config.submit_selector, timeout=5000)
-                else:
-                    page.keyboard.press("Enter")
-
-                page.wait_for_timeout(3000)
-
-                # 4. 성공 여부 판단
-                # 검색 대상: 페이지 본문 + alert로 떴던 메시지(리다이렉트로 사라지는 경우 대비)
-                content = page.content() + " " + " ".join(dialog_messages)
-                post_submit_url = page.url
-                
-                # 스크린샷 저장
+                # 3. 스크린샷 경로 준비 (두 모드 공통)
                 screenshot_dir = os.path.join("app", "static", "screenshots")
                 os.makedirs(screenshot_dir, exist_ok=True)
                 screenshot_filename = f"site_{site.id}_form_{form_config.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                 screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
-                page.screenshot(path=screenshot_path)
                 db_screenshot_path = f"screenshots/{screenshot_filename}"
 
-                if form_config.expected_success_text:
-                    # 성공 문구가 설정돼 있으면 그것만으로 판정 (가장 신뢰도 높음)
-                    if form_config.expected_success_text in content:
+                if not form_config.submit_test:
+                    # 기본(안전) 모드: 실제 제출하지 않고 '폼이 살아있고 작성 가능한지'만 점검.
+                    # 고객 상담 게시판에 KEEPY_TEST 글이 매번 쌓이는 오염을 방지한다.
+                    # (위에서 각 필드 입력이 성공했다면 폼은 정상 동작 중)
+                    submit_ok = True
+                    if form_config.submit_selector:
+                        btn = page.query_selector(form_config.submit_selector)
+                        submit_ok = bool(btn) and btn.is_visible() and btn.is_enabled()
+                    page.screenshot(path=screenshot_path)
+                    if submit_ok:
                         status = "success"
                     else:
                         status = "fail"
-                        fail_reason = f"성공 메시지('{form_config.expected_success_text}')를 찾을 수 없습니다"
+                        fail_reason = "제출 버튼을 찾을 수 없거나 비활성 상태입니다 (폼 점검 모드: 미제출)"
                 else:
-                    # 성공 문구 미설정 시 휴리스틱.
-                    # 주의: '제출'은 제출 버튼 라벨로 거의 모든 페이지에 항상 존재하므로
-                    # 성공 신호로 쓰면 폼 장애를 놓친다(false negative) → 사용하지 않는다.
-                    SUCCESS_PHRASES = [
-                        "등록되었습니다", "접수되었습니다", "정상적으로", "감사합니다",
-                        "완료되었습니다", "등록 완료", "접수 완료", "신청이 완료",
-                        "success", "thank you",
-                    ]
-                    ERROR_PHRASES = ["오류", "에러", "실패", "error", "필수", "입력해", "다시 시도"]
-
-                    lower = content.lower()
-                    has_success = any(p.lower() in lower for p in SUCCESS_PHRASES)
-                    has_error = any(p.lower() in lower for p in ERROR_PHRASES)
-                    # 제출 후 다른 URL(보기 페이지/완료 페이지)로 이동했는지
-                    navigated = post_submit_url != pre_submit_url
-
-                    if has_success or (navigated and not has_error):
-                        status = "success"
+                    # 실제 제출 모드: 고객이 동의했거나 전용 테스트 게시판일 때만 사용.
+                    pre_submit_url = page.url
+                    if form_config.submit_selector:
+                        page.click(form_config.submit_selector, timeout=5000)
                     else:
-                        status = "fail"
-                        fail_reason = (
-                            "제출 후 성공 신호(완료 문구/페이지 이동)를 확인하지 못했습니다. "
-                            "정확한 판정을 위해 폼 설정에 '성공 메시지'를 지정해 주세요."
-                        )
-                    
+                        page.keyboard.press("Enter")
+
+                    page.wait_for_timeout(3000)
+
+                    # 검색 대상: 페이지 본문 + alert로 떴던 메시지(리다이렉트로 사라지는 경우 대비)
+                    content = page.content() + " " + " ".join(dialog_messages)
+                    post_submit_url = page.url
+                    page.screenshot(path=screenshot_path)
+
+                    if form_config.expected_success_text:
+                        # 성공 문구가 설정돼 있으면 그것만으로 판정 (가장 신뢰도 높음)
+                        if form_config.expected_success_text in content:
+                            status = "success"
+                        else:
+                            status = "fail"
+                            fail_reason = f"성공 메시지('{form_config.expected_success_text}')를 찾을 수 없습니다"
+                    else:
+                        # 성공 문구 미설정 시 휴리스틱.
+                        # 주의: '제출'은 제출 버튼 라벨로 거의 모든 페이지에 항상 존재하므로
+                        # 성공 신호로 쓰면 폼 장애를 놓친다(false negative) → 사용하지 않는다.
+                        SUCCESS_PHRASES = [
+                            "등록되었습니다", "접수되었습니다", "정상적으로", "감사합니다",
+                            "완료되었습니다", "등록 완료", "접수 완료", "신청이 완료",
+                            "success", "thank you",
+                        ]
+                        ERROR_PHRASES = ["오류", "에러", "실패", "error", "필수", "입력해", "다시 시도"]
+
+                        lower = content.lower()
+                        has_success = any(p.lower() in lower for p in SUCCESS_PHRASES)
+                        has_error = any(p.lower() in lower for p in ERROR_PHRASES)
+                        # 제출 후 다른 URL(보기 페이지/완료 페이지)로 이동했는지
+                        navigated = post_submit_url != pre_submit_url
+
+                        if has_success or (navigated and not has_error):
+                            status = "success"
+                        else:
+                            status = "fail"
+                            fail_reason = (
+                                "제출 후 성공 신호(완료 문구/페이지 이동)를 확인하지 못했습니다. "
+                                "정확한 판정을 위해 폼 설정에 '성공 메시지'를 지정해 주세요."
+                            )
+
                 browser.close()
             
         response_time = time.time() - start_time
