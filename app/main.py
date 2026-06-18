@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.config import settings
-from app.db import engine, Base, SessionLocal
+from app.db import engine, Base, SessionLocal, run_light_migrations
 from app.api import sites, logs, alerts, checks, spam, auth, organizations, leads, discovery
 from app.api.auth import get_password_hash, verify_password
 from app.models import User, UserRole
@@ -18,6 +18,8 @@ logger = get_logger("main")
 
 # 데이터베이스 테이블 생성
 Base.metadata.create_all(bind=engine)
+# 기존 DB에 새 컬럼이 없으면 추가 (Alembic 미사용 환경용 경량 마이그레이션)
+run_light_migrations()
 
 app = FastAPI(title="Keepy MVP", description="병원 웹사이트 모니터링 시스템")
 

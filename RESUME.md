@@ -1,7 +1,63 @@
 # 작업 이어가기 (Resume) — Keepy
 
 > 다음 세션에서 이 파일을 먼저 읽으면 현재 상태와 다음 할 일을 파악할 수 있습니다.
-> 마지막 작업 기준일: 2026-06-14
+> 마지막 작업 기준일: 2026-06-18
+
+## 🟢 2026-06-18에 한 것 (가장 최신) — 판매 전 알림 결함 정비
+
+영업 시작 전 "정말 팔아도 되는가" 점검 중 **핵심 가치인 알림 전달이 고객에게 안 닿던 구조적 결함**을 발견·수정. (아직 uncommitted — working tree)
+
+1. **알림 이메일이 고객이 아니라 운영자에게만 가던 문제 수정** (가장 치명적)
+   - `email_service.send_alert_email`: `msg['To']=SMTP_USER` 고정 → `recipients` 목록 파라미터로 변경, 없으면 운영자 폴백.
+   - `Organization`에 `notify_emails`·`notify_phones`(쉼표 다수) 컬럼 추가(`models.py`). `db.py`에 Alembic 없는 환경용 경량 컬럼 마이그레이션(`run_light_migrations`) 추가, `main.py` 부팅 시 실행(멱등).
+   - `alert_service._recipients_for_site`: 조직 notify_emails → billing_email 순으로 수신처 계산. 휴대폰은 SMS/알림톡 미연동이라 **로그만**(거짓 발송 금지). 
+   - API: `PATCH /api/organizations/{id}`(OWNER/ADMIN/superadmin) 추가. 프론트 `SettingsView`에 "알림 수신" 섹션 추가(이메일/휴대폰 입력·저장).
+
+2. **연락처변조·화면변조·SSL 알림이 이메일을 안 보내던 문제 수정 + 알림 일원화**
+   - 기존: 이 3개는 체커가 Alert를 **직접** 생성, 이메일은 0. `handle_check_result`엔 분기 자체가 없었음.
+   - 변경: 체커들의 직접 Alert 생성 제거(contact/visual/ssl) → 전부 `handle_check_result` 한곳에서 Alert+이메일+쿨다운 처리. `handle_check_result`에 contact_hijack/visual_defacement/ssl 분기 추가.
+   - scheduler·checks.py(수동 점검) 양쪽 모두 동일 경로로 라우팅. visual은 **warning(변조 의심)만** 알림(시스템 fail은 오탐 방지 위해 제외).
+   - 검증: 격리 임시 DB로 5개 유형 전부 고객 이메일 수신·Alert 1건·쿨다운 중복0 확인.
+
+3. **상담폼 성공 판정 강화** (false negative 차단)
+   - 기존 `"제출" in content` 폴백은 제출 버튼 라벨이 늘 있어 **폼이 깨져도 success로 오판**. → 제거.
+   - `expected_success_text` 있으면 그것만으로 판정. 없으면: 엄격한 성공문구 OR (제출 후 URL 이동 & 에러문구 없음). JS `alert()` 메시지도 캡처해 판정에 포함(게시판이 '등록되었습니다' alert 후 리다이렉트하는 케이스).
+
+4. **홈페이지 점검 오탐 완화**: `requests.get`에 브라우저 User-Agent/Accept 헤더 + allow_redirects 추가(WAF가 python-requests를 403으로 막아 정상사이트를 장애로 오탐하는 것 방지).
+
+### ⚠️ 다음 할 일 (우선순위)
+1. **이 변경 묶음 커밋** (위 1~4 + 2026-06-16 폼버그 수정이 한 working tree에 같이 있음).
+2. **SMTP 실제값**: `.env`의 `SMTP_USER`/`SMTP_PASSWORD`가 아직 placeholder → Gmail 앱 비번 넣어야 실제 발송. (넣은 뒤 실메일 1건 발송 테스트 권장)
+3. 각 고객 온보딩 시 **설정>알림 수신에 병원 담당자 이메일 입력** 필수(안 넣으면 운영자에게만 감).
+4. (선택) SMS/카카오 알림톡 게이트웨이 연동하면 notify_phones 실발송 가능.
+5. 랜딩·앱의 `02-1234-5678` 실제 번호 교체.
+6. 끝나면 GitHub push → 배포. push는 이 PC TLS 가로채기로 `git -c http.sslVerify=false push origin production-refactor` 필요(자동 보안검사가 막으면 사용자가 `! ...`로 직접 실행).
+
+---
+
+## 🟢 2026-06-16에 한 것
+
+1. **디자인 건메탈/택티컬 리스킨 완료 — 커밋 `e4c9713`**
+   - 랜딩(`app/static/landing.css`): 흑백 → 차가운 강철빛 + 각진 모서리 + 브러시드 패널 + 메탈(은빛) 버튼.
+   - 앱 전체(15개 `.tsx`): 브랜드 강조 `emerald`→스틸(`#9fb2c2`/`#c8d4de`). **상태색(정상=초록/장애=빨강/주의=주황)은 의미상 유지.** 동일 규칙서로 서브에이전트 4명 병렬 변환 후 빌드·스크린샷 검수.
+   - 로그인/회원가입(`LoginView`·`RegisterView`): emerald→스틸, **"Keepy V2" → "Keepy"**(V2 표기 전부 제거). `index.css`의 `gradient-text`(초록→파랑)도 스틸로, 사이드바 V2 배지 제거.
+   - 잠재버그 수정: 기능 아이콘 `.fi` 클래스 충돌(문의폼 입력칸 `padding` 누수로 svg가 6px로 찌부러짐), 요금 카드 CTA 하단 정렬.
+
+2. **핵심 7기능 실동작 검증 — 7/7 통과**
+   - 제품 실제 점검함수(`check_homepage`/`check_form`/`check_contact`/`check_visual_defacement`/`ssl_service`/`handle_check_result`/배너 공개 API)를 **격리 임시 DB + 내가 통제하는 로컬 테스트 사이트**로 호출, 정상→일부러 장애→탐지·알림 확인. 이메일은 가로채 실발송 안 함. (검증 하네스 `_verify_features.py`는 정리·삭제함)
+
+3. **검증 중 실버그 1개 발견·수정 (⚠️ 아직 커밋 안 됨 — working tree에만 있음)**
+   - `app/services/alert_service.py`: 스케줄러는 `handle_check_result(..., check_type=f"form:{name}", ...)`로 넘기는데 알림 분기는 `if check_type == "form"`(정확 일치)만 봐서 **상담폼 장애 시 알림/이메일이 한 번도 안 나가던 버그**. → `check_type.startswith("form")`으로 수정. **내일 이 수정부터 커밋할 것.**
+
+### ⚠️ 내일 할 일 (우선순위)
+1. **`alert_service.py` 폼 버그 수정 커밋** (지금 uncommitted).
+2. **이메일 알림 커버리지 보완**: 현재 이메일 발송은 `homepage`·`form`·`spam`만. **`contact_hijack`(연락처 변조)·`visual_defacement`·`ssl`은 체커 내부에서 Alert(대시보드)만 만들고 이메일은 안 감.** 헤드라인 기능인 연락처 변조 즉시알림이 메일로 안 나가므로 판매 전 연결 필요. (단, 중복 Alert 안 생기게 주의 — 이 3개는 이미 체커가 Alert를 직접 생성함)
+3. **SMTP 실제값 입력**: `.env`의 `SMTP_USER`/`SMTP_PASSWORD`가 아직 `your_email`/`your_app_password` **placeholder** → Gmail 앱 비밀번호 넣어야 실제 메일 발송됨.
+4. (랜딩·앱 곳곳의 `02-1234-5678`도 실제 번호로 교체 필요)
+5. 위 끝나면 **GitHub push → 배포**. **push는 이 PC TLS 가로채기로 `git -c http.sslVerify=false push origin production-refactor` 필요한데, 자동 보안검사가 막음** → 사용자가 직접 `! ...`로 실행하거나 Bash 권한 추가해야 함.
+
+---
+
 
 ## ✅ 2026-06-14에 한 것: AI 스팸 헌터 실게시판 테스트 + 버그수정 완료
 

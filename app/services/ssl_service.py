@@ -2,7 +2,7 @@ import ssl
 import socket
 from datetime import datetime
 from sqlalchemy.orm import Session
-from ..models import Site, Log, Alert
+from ..models import Site, Log
 from ..utils.logger import get_logger
 
 logger = get_logger("ssl_service")
@@ -13,7 +13,9 @@ SSL_WARN_DAYS = 30
 
 def check_and_renew_ssl(db: Session, site: Site):
     """
-    SSL 인증서 만료일을 확인하고, 만료가 임박(30일 미만)하면 알림을 생성한다.
+    SSL 인증서 만료일을 확인하고, 만료가 임박(30일 미만)하면 (status, message)를 반환한다.
+    정상이거나 점검 불가 시 None을 반환한다. Alert 생성/이메일은 스케줄러가
+    handle_check_result로 일원화 처리한다(쿨다운·수신처 일관성).
 
     주의: 이전 버전은 실제 갱신 없이 'time.sleep' 후 "갱신 완료"라는 거짓 기록을
     남겼다. 실제 인증서 자동 갱신은 고객 서버 접근 권한(ACME/Certbot 연동)이 필요하므로,
@@ -23,7 +25,7 @@ def check_and_renew_ssl(db: Session, site: Site):
         hostname = site.homepage_url.split("//")[1].split("/")[0]
     except (IndexError, AttributeError):
         logger.error(f"SSL 점검: 잘못된 URL 형식 site_id={site.id} url={site.homepage_url}")
-        return False
+        return None
 
     try:
         context = ssl.create_default_context()
@@ -36,15 +38,13 @@ def check_and_renew_ssl(db: Session, site: Site):
         logger.info(f"SSL 상태 확인: site={hostname} 잔여={days_left}일")
 
         if days_left < 0:
-            _record(db, site, "danger",
-                    f"🚨 [SSL 만료] {site.site_name}의 SSL 인증서가 이미 만료되었습니다. "
-                    f"즉시 갱신이 필요합니다.")
-            return True
+            return _record(db, site, "fail",
+                           f"🚨 [SSL 만료] {site.site_name}의 SSL 인증서가 이미 만료되었습니다. "
+                           f"즉시 갱신이 필요합니다.")
         if days_left < SSL_WARN_DAYS:
-            _record(db, site, "warning",
-                    f"⚠️ [SSL 만료 임박] {site.site_name}의 SSL 인증서가 {days_left}일 후 만료됩니다. "
-                    f"갱신을 준비하세요.")
-            return True
+            return _record(db, site, "warning",
+                           f"⚠️ [SSL 만료 임박] {site.site_name}의 SSL 인증서가 {days_left}일 후 만료됩니다. "
+                           f"갱신을 준비하세요.")
 
         # 정상: 기록만 남김
         log = Log(
@@ -55,20 +55,21 @@ def check_and_renew_ssl(db: Session, site: Site):
         )
         db.add(log)
         db.commit()
-        return False
+        return None
 
     except ssl.SSLError as e:
-        _record(db, site, "danger",
-                f"🚨 [SSL 오류] {site.site_name}의 SSL 인증서에 문제가 있습니다: {e}")
-        return True
+        return _record(db, site, "fail",
+                       f"🚨 [SSL 오류] {site.site_name}의 SSL 인증서에 문제가 있습니다: {e}")
     except Exception as e:
         logger.error(f"SSL 상태 확인 중 오류: site_id={site.id} {e}")
-        return False
+        return None
 
 
-def _record(db: Session, site: Site, level: str, message: str):
-    """SSL 점검 결과 로그 + 알림 기록."""
-    status = "fail" if level == "danger" else "warning"
+def _record(db: Session, site: Site, status: str, message: str):
+    """SSL 점검 결과 로그를 남기고 (status, message)를 반환한다.
+
+    Alert/이메일은 호출측(스케줄러→handle_check_result)에서 생성한다.
+    """
     db.add(Log(
         site_id=site.id,
         check_type="ssl",
@@ -76,10 +77,5 @@ def _record(db: Session, site: Site, level: str, message: str):
         fail_reason=message,
         raw_result=message,
     ))
-    db.add(Alert(
-        site_id=site.id,
-        check_type="ssl",
-        alert_level=level,
-        message=message,
-    ))
     db.commit()
+    return status, message

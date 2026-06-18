@@ -9,12 +9,22 @@ from datetime import datetime
 
 logger = get_logger("homepage_checker")
 
+# 일부 병원 사이트는 WAF/CDN이 기본 python-requests UA를 403으로 막아 정상 사이트를
+# 장애로 오탐할 수 있다. 실제 브라우저처럼 보이게 헤더를 설정한다.
+_BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+}
+
 def check_homepage(db: Session, site: Site):
     logger.debug(f"홈페이지 체크 시작: site_id={site.id} url={site.homepage_url}")
-    
+
     start_time = time.time()
     try:
-        response = requests.get(site.homepage_url, timeout=10)
+        response = requests.get(site.homepage_url, timeout=10,
+                                headers=_BROWSER_HEADERS, allow_redirects=True)
         response_time = time.time() - start_time
         
         status = "success"

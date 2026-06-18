@@ -132,6 +132,9 @@ export interface Organization {
   name: string;
   slug: string;
   logo_url?: string;
+  billing_email?: string;
+  notify_emails?: string;
+  notify_phones?: string;
   is_active: boolean;
 }
 
@@ -152,6 +155,8 @@ export const organizationsApi = {
   list: () => authApiInstance.get<Organization[]>('/organizations/'),
   get: (id: number) => authApiInstance.get<Organization>(`/organizations/${id}`),
   create: (data: any) => authApiInstance.post<Organization>('/organizations/', data),
+  update: (id: number, data: Partial<Organization>) =>
+    authApiInstance.patch<Organization>(`/organizations/${id}`, data),
 };
 
 export const sitesApi = {

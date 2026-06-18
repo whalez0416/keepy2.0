@@ -2,7 +2,7 @@ import time
 from playwright.sync_api import sync_playwright
 from sqlalchemy.orm import Session
 from datetime import datetime
-from ..models import Site, Log, ContactConfig, Alert
+from ..models import Site, Log, ContactConfig
 from ..utils.logger import get_logger
 from .browser_pool import browser_semaphore
 import re
@@ -100,20 +100,14 @@ def check_contact(db: Session, contact_config: ContactConfig):
         raw_result=f"Phone: {found_phone}, Kakao: {found_kakao}" if status == "fail" else None
     )
     db.add(log)
-    
-    # 변조 발견 시 Alert 생성
+
+    # 변조 발견 로깅. Alert 생성/이메일은 스케줄러가 handle_check_result로 일원화 처리한다
+    # (쿨다운·수신처·중복 방지를 한곳에서 관리하기 위함).
     if status == "fail":
-        alert = Alert(
-            site_id=site.id,
-            check_type="contact_hijack",
-            alert_level="danger",
-            message=f"[긴급] 연락처 변조가 의심됩니다: {fail_reason_text}"
-        )
-        db.add(alert)
         logger.warning(f"ALERT: 연락처 변조 탐지! site_id={site.id} 사유={fail_reason_text}")
 
     # 마지막 체크 시간 업데이트
     contact_config.last_checked_at = datetime.now()
     db.commit()
-    
+
     return log

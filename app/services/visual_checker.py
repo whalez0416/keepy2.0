@@ -4,7 +4,7 @@ from datetime import datetime
 from playwright.sync_api import sync_playwright
 from PIL import Image, ImageChops, ImageStat
 from sqlalchemy.orm import Session
-from ..models import Site, Log, Alert
+from ..models import Site, Log
 from ..utils.logger import get_logger
 from .browser_pool import browser_semaphore
 
@@ -61,16 +61,8 @@ def check_visual_defacement(db: Session, site: Site):
                 # 유사도가 90% 미만이면 변조 의심
                 if similarity < 90.0:
                     status = "warning"
-                    fail_reason = f"시각적 변조 의심 (유사도: {similarity:.2f}%)"
-                    
-                    # 알림 생성
-                    alert = Alert(
-                        site_id=site.id,
-                        check_type="visual_defacement",
-                        alert_level="warning",
-                        message=f"⚠️ [변조 의심] 홈페이지 화면이 평소와 다릅니다. (유사도: {similarity:.2f}%)"
-                    )
-                    db.add(alert)
+                    fail_reason = f"⚠️ [변조 의심] 홈페이지 화면이 평소와 다릅니다. (유사도: {similarity:.2f}%)"
+                    # Alert 생성/이메일은 스케줄러가 handle_check_result로 일원화 처리한다.
                     logger.warning(f"ALERT: 비주얼 변조 의심! site_id={site.id} similarity={similarity:.2f}%")
             else:
                 logger.error(f"기준 이미지를 찾을 수 없습니다: {baseline_full_path}")

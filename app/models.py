@@ -40,6 +40,9 @@ class Organization(Base):
     slug = Column(String, unique=True, index=True, nullable=False) # URL용 (예: min-hospital)
     logo_url = Column(String, nullable=True)
     billing_email = Column(String, nullable=True)
+    # 장애/변조 알림 수신처 (쉼표로 여러 명). 이메일은 즉시 발송, 휴대폰은 SMS/알림톡 연동 시 사용.
+    notify_emails = Column(Text, nullable=True)
+    notify_phones = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

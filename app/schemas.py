@@ -152,9 +152,19 @@ class OrganizationBase(BaseModel):
     slug: str
     logo_url: Optional[str] = None
     billing_email: Optional[str] = None
+    # 장애/변조 알림 수신처 (쉼표로 여러 명)
+    notify_emails: Optional[str] = None
+    notify_phones: Optional[str] = None
 
 class OrganizationCreate(OrganizationBase):
     pass
+
+class OrganizationUpdate(BaseModel):
+    name: Optional[str] = None
+    logo_url: Optional[str] = None
+    billing_email: Optional[str] = None
+    notify_emails: Optional[str] = None
+    notify_phones: Optional[str] = None
 
 class Organization(OrganizationBase):
     id: int

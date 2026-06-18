@@ -64,7 +64,20 @@ def check_form(db: Session, form_config: FormConfig):
                 browser = p.chromium.launch(headless=True)
                 context = browser.new_context()
                 page = context.new_page()
-                
+
+                # JS alert/confirm 메시지 캡처 (많은 게시판이 '등록되었습니다' 등을
+                # alert로 띄우고 리다이렉트한다 — content엔 안 남으므로 따로 수집).
+                dialog_messages = []
+
+                def _on_dialog(dialog):
+                    try:
+                        dialog_messages.append(dialog.message or "")
+                        dialog.accept()
+                    except Exception:
+                        pass
+
+                page.on("dialog", _on_dialog)
+
                 # 1. 상담 페이지 이동
                 page.goto(form_config.form_url, timeout=30000)
                 page.wait_for_load_state("networkidle")
@@ -114,15 +127,18 @@ def check_form(db: Session, form_config: FormConfig):
                         page.fill(form_config.message_selector, "[KEEPY_TEST] 자동 점검 메시지입니다")
                 
                 # 3. 제출 버튼 클릭
+                pre_submit_url = page.url
                 if form_config.submit_selector:
                     page.click(form_config.submit_selector, timeout=5000)
                 else:
                     page.keyboard.press("Enter")
-                    
+
                 page.wait_for_timeout(3000)
-                
+
                 # 4. 성공 여부 판단
-                content = page.content()
+                # 검색 대상: 페이지 본문 + alert로 떴던 메시지(리다이렉트로 사라지는 경우 대비)
+                content = page.content() + " " + " ".join(dialog_messages)
+                post_submit_url = page.url
                 
                 # 스크린샷 저장
                 screenshot_dir = os.path.join("app", "static", "screenshots")
@@ -132,13 +148,38 @@ def check_form(db: Session, form_config: FormConfig):
                 page.screenshot(path=screenshot_path)
                 db_screenshot_path = f"screenshots/{screenshot_filename}"
 
-                if form_config.expected_success_text and form_config.expected_success_text in content:
-                    status = "success"
-                elif "완료" in content or "성공" in content or "제출" in content or "success" in content.lower():
-                    status = "success"
+                if form_config.expected_success_text:
+                    # 성공 문구가 설정돼 있으면 그것만으로 판정 (가장 신뢰도 높음)
+                    if form_config.expected_success_text in content:
+                        status = "success"
+                    else:
+                        status = "fail"
+                        fail_reason = f"성공 메시지('{form_config.expected_success_text}')를 찾을 수 없습니다"
                 else:
-                    status = "fail"
-                    fail_reason = f"성공 메시지('{form_config.expected_success_text or '완료'}')를 찾을 수 없습니다"
+                    # 성공 문구 미설정 시 휴리스틱.
+                    # 주의: '제출'은 제출 버튼 라벨로 거의 모든 페이지에 항상 존재하므로
+                    # 성공 신호로 쓰면 폼 장애를 놓친다(false negative) → 사용하지 않는다.
+                    SUCCESS_PHRASES = [
+                        "등록되었습니다", "접수되었습니다", "정상적으로", "감사합니다",
+                        "완료되었습니다", "등록 완료", "접수 완료", "신청이 완료",
+                        "success", "thank you",
+                    ]
+                    ERROR_PHRASES = ["오류", "에러", "실패", "error", "필수", "입력해", "다시 시도"]
+
+                    lower = content.lower()
+                    has_success = any(p.lower() in lower for p in SUCCESS_PHRASES)
+                    has_error = any(p.lower() in lower for p in ERROR_PHRASES)
+                    # 제출 후 다른 URL(보기 페이지/완료 페이지)로 이동했는지
+                    navigated = post_submit_url != pre_submit_url
+
+                    if has_success or (navigated and not has_error):
+                        status = "success"
+                    else:
+                        status = "fail"
+                        fail_reason = (
+                            "제출 후 성공 신호(완료 문구/페이지 이동)를 확인하지 못했습니다. "
+                            "정확한 판정을 위해 폼 설정에 '성공 메시지'를 지정해 주세요."
+                        )
                     
                 browser.close()
             

@@ -76,10 +76,17 @@ def run_site_check(site_id: int, check_type: str, extra_id: int = None):
                         handle_check_result(db, site, "contact_hijack", log.status, log.fail_reason)
         
         elif check_type == "ssl_renewal":
-            check_and_renew_ssl(db, site)
-            
+            result = check_and_renew_ssl(db, site)
+            if result:
+                status, message = result
+                handle_check_result(db, site, "ssl", status, message)
+
         elif check_type == "visual":
-            check_visual_defacement(db, site)
+            log = check_visual_defacement(db, site)
+            # status=="warning"만 '변조 의심'. "fail"은 브라우저/네트워크 시스템 오류이므로
+            # 고객에게 변조로 잘못 알리지 않는다.
+            if log and log.status == "warning":
+                handle_check_result(db, site, "visual_defacement", log.status, log.fail_reason)
             
         elif check_type == "admin_watch":
             check_admin_exposure(db, site)
