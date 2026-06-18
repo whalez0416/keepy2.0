@@ -49,7 +49,10 @@ def send_alert_email(site_name: str, check_type: str, status: str, fail_reason: 
     msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
     try:
-        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
+        # local_hostname을 명시적으로 고정한다. 지정하지 않으면 smtplib가 OS 호스트명을
+        # EHLO로 보내는데, 호스트명에 비ASCII(예: 한글 PC 이름)가 있으면 인코딩 오류로
+        # 발송이 통째로 실패한다.
+        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, local_hostname="localhost")
         server.starttls()
         server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
         server.send_message(msg)
