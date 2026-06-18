@@ -96,18 +96,28 @@ def update_site(site_id: int, site_update: schemas.SiteUpdate, db: Session = Dep
     for var, value in update_data.items():
         setattr(db_site, var, value)
     
-    # 폼 설정 업데이트
+    # 폼 설정 업데이트 (전체 교체 방식)
     if site_update.form_configs is not None:
+        # 비밀번호는 응답으로 내려주지 않으므로(쓰기전용), 클라이언트가 빈 값으로 보낼 수 있다.
+        # 그 경우 기존 비밀번호를 잃지 않도록 폼 이름 기준으로 보존한다.
+        old_form_pw = {f.name: f.password_value for f in db_site.form_configs}
         db.query(models.FormConfig).filter(models.FormConfig.site_id == db_site.id).delete()
         for form in site_update.form_configs:
-            db_form = models.FormConfig(**form.model_dump(), site_id=db_site.id)
+            data = form.model_dump()
+            if not data.get("password_value"):
+                data["password_value"] = old_form_pw.get(form.name)  # 빈 값이면 기존 비번 유지
+            db_form = models.FormConfig(**data, site_id=db_site.id)
             db.add(db_form)
 
-    # 스팸 설정 업데이트
+    # 스팸 설정 업데이트 (전체 교체 방식)
     if site_update.spam_configs is not None:
+        old_spam_pw = {s.board_url: s.admin_pw for s in db_site.spam_configs}
         db.query(models.SpamConfig).filter(models.SpamConfig.site_id == db_site.id).delete()
         for spam in site_update.spam_configs:
-            db_spam = models.SpamConfig(**spam.model_dump(exclude={"site_id"}), site_id=db_site.id)
+            data = spam.model_dump(exclude={"site_id"})
+            if not data.get("admin_pw"):
+                data["admin_pw"] = old_spam_pw.get(spam.board_url)  # 빈 값이면 기존 비번 유지
+            db_spam = models.SpamConfig(**data, site_id=db_site.id)
             db.add(db_spam)
         
     db.commit()

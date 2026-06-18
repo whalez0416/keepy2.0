@@ -46,7 +46,8 @@ export interface FormConfig {
   subject_selector?: string;
   message_selector?: string;
   password_selector?: string;
-  password_value?: string;
+  password_value?: string; // 쓰기 전용: 응답에는 안 옴. 빈 값으로 저장하면 기존 비번 유지
+  has_password?: boolean;  // 비밀번호 저장 여부(응답에서 제공)
   agreement_selector?: string;
   submit_selector?: string;
   is_active: boolean;
@@ -57,7 +58,8 @@ export interface SpamConfig {
   site_id: number;
   board_url: string;
   admin_id?: string;
-  admin_pw?: string;
+  admin_pw?: string;      // 쓰기 전용: 응답에는 안 옴. 빈 값으로 저장하면 기존 비번 유지
+  has_admin_pw?: boolean; // 비밀번호 저장 여부(응답에서 제공)
   keywords?: string;
   is_active: boolean;
 }

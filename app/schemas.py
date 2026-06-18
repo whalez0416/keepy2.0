@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -39,6 +39,18 @@ class FormConfig(FormConfigBase):
     id: int
     site_id: int
     created_at: datetime
+    # 보안: 폼 테스트용 비밀번호는 응답으로 절대 내보내지 않는다(쓰기 전용).
+    # 저장 여부만 알 수 있도록 has_password로 노출한다.
+    password_value: Optional[str] = Field(default=None, exclude=True)
+    has_password: bool = False
+
+    @staticmethod
+    def _has_pw(v) -> bool:
+        return bool(v)
+
+    def model_post_init(self, __context) -> None:
+        # ORM에서 읽은 password_value 유무를 has_password로 변환 후 원본은 직렬화 제외
+        object.__setattr__(self, "has_password", bool(self.password_value))
 
     class Config:
         from_attributes = True
@@ -55,6 +67,12 @@ class SpamConfig(SpamConfigBase):
     id: int
     site_id: int
     created_at: datetime
+    # 보안: 게시판 관리자 비밀번호는 응답으로 내보내지 않는다(쓰기 전용).
+    admin_pw: Optional[str] = Field(default=None, exclude=True)
+    has_admin_pw: bool = False
+
+    def model_post_init(self, __context) -> None:
+        object.__setattr__(self, "has_admin_pw", bool(self.admin_pw))
 
     class Config:
         from_attributes = True

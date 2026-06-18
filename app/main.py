@@ -149,8 +149,10 @@ def startup_event():
     else:
         logger.info("다른 워커가 이미 스케줄러를 실행 중입니다. 이 워커는 API만 처리합니다.")
 
-    # 마스터(운영자) 계정을 .env 값과 동기화 — MASTER_EMAIL/MASTER_PASSWORD가 있을 때만.
-    # 계정이 없으면 생성하고, 있으면 비밀번호/권한을 .env 기준으로 맞춘다(.env가 진실의 원천).
+    # 마스터(운영자) 계정 시드 — MASTER_EMAIL/MASTER_PASSWORD가 있을 때만.
+    # 보안: 계정이 '없을 때 1회만' 생성한다. 이미 있으면 비밀번호를 건드리지 않는다
+    # (앱에서 비번을 바꿔도 부팅 때마다 평문 env값으로 되돌아가던 문제 방지).
+    # 권한이 SUPERADMIN이 아니면 그것만 보정한다.
     if settings.MASTER_EMAIL and settings.MASTER_PASSWORD:
         db = SessionLocal()
         try:
@@ -163,19 +165,13 @@ def startup_event():
                 ))
                 db.commit()
                 logger.info(f"마스터 계정이 생성되었습니다: {settings.MASTER_EMAIL}")
-            else:
-                changed = False
-                if not verify_password(settings.MASTER_PASSWORD, existing.hashed_password):
-                    existing.hashed_password = get_password_hash(settings.MASTER_PASSWORD)
-                    changed = True
-                if existing.role != UserRole.SUPERADMIN:
-                    existing.role = UserRole.SUPERADMIN
-                    changed = True
-                if changed:
-                    db.commit()
-                    logger.info(f"마스터 계정을 .env 기준으로 동기화했습니다: {settings.MASTER_EMAIL}")
+            elif existing.role != UserRole.SUPERADMIN:
+                # 비밀번호는 그대로 두고 권한만 보정
+                existing.role = UserRole.SUPERADMIN
+                db.commit()
+                logger.info(f"마스터 계정 권한을 SUPERADMIN으로 보정했습니다: {settings.MASTER_EMAIL}")
         except Exception as e:
-            logger.error(f"마스터 계정 동기화 중 오류: {e}")
+            logger.error(f"마스터 계정 시드 중 오류: {e}")
         finally:
             db.close()
     else:
