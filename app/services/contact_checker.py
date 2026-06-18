@@ -29,8 +29,13 @@ def check_contact(db: Session, contact_config: ContactConfig):
                 
                 # 1. 홈페이지 이동
                 page.goto(site.homepage_url, timeout=30000)
-                page.wait_for_load_state("networkidle")
-                
+                # networkidle은 채팅위젯·트래커 등으로 영영 안 끝날 수 있어 타임아웃을 명시.
+                # 타임아웃돼도 추출은 진행(예외로 변조 오경보가 나지 않게).
+                try:
+                    page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
+
                 # 2. 연락처 데이터 추출
                 # 병원 사이트는 전화번호를 tel: 링크가 아니라 '평문 텍스트'로 적는 경우가
                 # 훨씬 많다. 따라서 tel: 링크뿐 아니라 페이지 본문 텍스트에서도 번호를 찾고,
@@ -77,7 +82,15 @@ def check_contact(db: Session, contact_config: ContactConfig):
 
                 if contact_config.expected_phone:
                     expected_norm = re.sub(r'[^0-9]', '', contact_config.expected_phone)
-                    matched = any(expected_norm in c or c in expected_norm for c in phone_candidates)
+                    # 정확 일치 또는 '끝 8자리(국번+번호)' 일치만 인정한다.
+                    # (부분 substring 매칭은 변조를 놓치거나(false negative) 무관한 번호를
+                    #  통과시킬 수 있어 위험)
+                    def _phone_match(c: str) -> bool:
+                        if c == expected_norm:
+                            return True
+                        tail = expected_norm[-8:]
+                        return len(tail) == 8 and c.endswith(tail)
+                    matched = any(_phone_match(c) for c in phone_candidates)
                     if matched:
                         pass  # 기대 번호 존재 → 정상
                     elif phone_candidates:
@@ -112,8 +125,11 @@ def check_contact(db: Session, contact_config: ContactConfig):
         
     except Exception as e:
         response_time = time.time() - start_time
-        status = "fail"
-        fail_reasons.append(str(e))
+        # 시스템 오류(네트워크/타임아웃/브라우저)는 '변조'가 아니다. status=fail로 두면
+        # 스케줄러→handle_check_result에서 danger '연락처 변조' 긴급경보가 잘못 나가므로
+        # warning으로 기록해 변조 경보가 발생하지 않게 한다(오경보 방지).
+        status = "warning"
+        fail_reasons.append(f"점검 수행 중 오류(변조 아님): {str(e)}")
         logger.error(f"연락처 체크 시스템 오류: site_id={site.id} 사유={str(e)}")
 
     # 결과 로그 기록

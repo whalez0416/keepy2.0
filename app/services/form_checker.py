@@ -80,8 +80,12 @@ def check_form(db: Session, form_config: FormConfig):
 
                 # 1. 상담 페이지 이동
                 page.goto(form_config.form_url, timeout=30000)
-                page.wait_for_load_state("networkidle")
-                
+                # networkidle은 채팅위젯·트래커로 안 끝날 수 있어 타임아웃 명시(초과해도 진행)
+                try:
+                    page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
+
                 # 1.5. 팝업 제거
                 try:
                     page.evaluate("() => { if(typeof layer_close_all2 === 'function') layer_close_all2(); }")

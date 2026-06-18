@@ -42,7 +42,11 @@ def check_visual_defacement(db: Session, site: Site):
                 
                 # 1. 페이지 로드
                 page.goto(site.homepage_url, timeout=30000)
-                page.wait_for_load_state("networkidle")
+                # networkidle은 채팅위젯·트래커로 안 끝날 수 있어 타임아웃 명시(초과해도 진행)
+                try:
+                    page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
                 # 팝업 등이 뜰 수 있으므로 잠시 대기
                 time.sleep(2)
                 

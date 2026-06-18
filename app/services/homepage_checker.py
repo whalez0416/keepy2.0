@@ -40,7 +40,7 @@ def check_homepage(db: Session, site: Site):
             _DOWN_SIGNALS = [
                 "계정이 정지", "계정은 정지", "서비스가 정지", "이용이 정지", "정지되었습니다",
                 "도메인이 만료", "도메인 만료", "호스팅 만료", "서비스 기간이 만료", "만료되었습니다",
-                "구매가 가능한 도메인", "도메인 주차", "account suspended", "suspended",
+                "구매가 가능한 도메인", "도메인 주차", "account suspended",
                 "this domain is parked", "domain is for sale", "this account has been suspended",
             ]
             if any(s in low or s in (response.text or "") for s in _DOWN_SIGNALS):

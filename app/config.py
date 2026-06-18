@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     MASTER_EMAIL: str = os.getenv("MASTER_EMAIL", "")
     MASTER_PASSWORD: str = os.getenv("MASTER_PASSWORD", "")
 
+    # 공개 회원가입 허용 여부. B2B 수동 발급 모델이므로 기본 False(아무나 가입 못 함).
+    # 마스터가 /api/auth/create-hospital-admin 로 고객 계정을 발급한다.
+    ALLOW_PUBLIC_REGISTRATION: bool = os.getenv("ALLOW_PUBLIC_REGISTRATION", "False").lower() == "true"
+
     # CORS 허용 출처(쉼표 구분). 운영에서는 프론트 도메인으로 좁힐 것. 기본은 전체 허용.
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
 

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from ..db import get_db
-from .. import models
+from .. import models, schemas
 from ..services.ai_spam_classifier import run_ai_spam_hunter, classify_posts_ai
 from ..utils.logger import get_logger
 from .auth import get_current_user
@@ -70,9 +70,9 @@ def classify_posts(request: SpamClassifyRequest, current_user: models.User = Dep
     return {"results": results, "total": len(results)}
 
 
-@router.get("/configs/{site_id}")
+@router.get("/configs/{site_id}", response_model=List[schemas.SpamConfig])
 def get_spam_configs(site_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """특정 사이트의 스팸 설정 목록 조회"""
+    """특정 사이트의 스팸 설정 목록 조회 (보안: admin_pw는 응답에서 제외됨)"""
     # 권한 확인
     site_query = db.query(models.Site).filter(models.Site.id == site_id)
     if current_user.role != models.UserRole.SUPERADMIN:
@@ -87,9 +87,9 @@ def get_spam_configs(site_id: int, db: Session = Depends(get_db), current_user: 
     return configs
 
 
-@router.post("/configs")
+@router.post("/configs", response_model=schemas.SpamConfig)
 def create_spam_config(config: SpamConfigCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """스팸 설정 생성"""
+    """스팸 설정 생성 (보안: admin_pw는 응답에서 제외됨)"""
     # 사이트 권한 확인
     site_query = db.query(models.Site).filter(models.Site.id == config.site_id)
     if current_user.role != models.UserRole.SUPERADMIN:

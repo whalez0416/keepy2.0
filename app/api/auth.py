@@ -103,6 +103,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 @router.post("/register", response_model=schemas.User)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    # B2B 수동 발급 모델: 공개 회원가입은 기본 차단(아무나 조직을 만들지 못하게).
+    # 고객 계정은 마스터가 /api/auth/create-hospital-admin 로 발급한다.
+    if not settings.ALLOW_PUBLIC_REGISTRATION:
+        raise HTTPException(status_code=403, detail="공개 회원가입이 비활성화되어 있습니다. 운영자에게 계정 발급을 요청하세요.")
+
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다.")
