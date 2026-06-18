@@ -15,9 +15,15 @@
 4. 영업문구 정직화: 문자/카카오 '출시예정', SLA 99.9% 제거, 5분/자동배너/피해0원 시나리오 톤다운, 더미번호 제거.
 5. 배포: Pillow 추가, render.yaml starter+Postgres(sqlite기본 제거), 스팸 브라우저 누수 try/finally+세마포어, 경량 마이그레이션 견고화. 죽은 spam_hunter.py 삭제.
 
-**남은 SHOULD-FIX(블로커 아님 — 초기 소수고객/컨시어지 온보딩엔 OK, 확장 전 처리 권장):**
-- 같은조직 내 VIEWER도 쓰기 가능(RBAC 미강제) — B2B 1계정/고객이라 당장 영향 적음
-- discovery/scan SSRF(인증 필요), auto_discovery 세마포어/누수, 스크린샷 무한 누적(보존정책), 화면 baseline 노후화, update_site 비번보존이 폼이름 기준(이름 변경 시 비번 분실)
+**배포 전 SHOULD-FIX도 처리 완료(커밋 fd6cbb8):**
+- RBAC 강제(OWNER/ADMIN/EDITOR=쓰기, VIEWER=읽기) — sites/spam/checks
+- SSRF 방어(url_guard, 공인IP만) — discovery/scan
+- auto_discovery 브라우저 세마포어+try/finally 누수차단
+- 스크린샷 보존정책: 30일(SCREENSHOT_RETENTION_DAYS) 자동삭제 + 로그상세 다운로드(보관) 버튼 + 안내문. 인증 스크린샷 엔드포인트 신규(/api/logs/screenshot/{id}).
+
+**아직 남은 작은 SHOULD-FIX(확장 전):** 화면 baseline 노후화, update_site 비번보존이 폼이름 기준(이름 변경 시 재입력 필요), _consecutive_fails 인메모리.
+
+**→ 다음: GitHub push(이 PC는 `git -c http.sslVerify=false push origin production-refactor` 직접 실행) → Supabase Postgres → Render(starter) Docker + 환경변수(SECRET_KEY/MASTER_*/OPENAI/DATABASE_URL/SMTP_*) → production-refactor를 main에 머지/배포. 상세는 DEPLOY.md.**
 
 ## 🟢 2026-06-18 (1차) — 판매 전 알림 결함 정비
 
