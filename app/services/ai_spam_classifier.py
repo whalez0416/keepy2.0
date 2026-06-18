@@ -18,6 +18,7 @@ from typing import List, Dict, Optional, Any
 from playwright.sync_api import sync_playwright, Page
 from sqlalchemy.orm import Session
 from ..models import Site, SpamConfig, Log
+from .browser_pool import browser_semaphore
 from ..config import settings
 from ..utils.logger import get_logger
 
@@ -387,40 +388,43 @@ def run_ai_spam_hunter(db: Session, config: SpamConfig) -> Dict[str, Any]:
     keywords = [k.strip() for k in (config.keywords or "").split(",") if k.strip()]
 
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            )
-            page = context.new_page()
+        # 다른 Playwright 점검과 동시에 여러 Chromium이 뜨지 않도록 세마포어로 직렬화하고,
+        # 예외가 나도 브라우저가 새지 않도록 try/finally로 반드시 닫는다(메모리 누수 방지).
+        with browser_semaphore:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    context = browser.new_context(
+                        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    )
+                    page = context.new_page()
 
-            page.goto(config.board_url, timeout=30000)
-            page.wait_for_load_state("networkidle")
+                    page.goto(config.board_url, timeout=30000)
+                    page.wait_for_load_state("networkidle")
 
-            posts = _extract_posts_from_page(page, config)
-            summary["total_posts"] = len(posts)
+                    posts = _extract_posts_from_page(page, config)
+                    summary["total_posts"] = len(posts)
 
-            if not posts:
-                logger.warning(f"[AI SPAM] 게시물을 찾을 수 없음: {config.board_url}")
-                summary["status"] = "warning"
-                summary["error"] = "게시물을 찾을 수 없습니다. 게시판 구조가 일반적이지 않을 수 있습니다."
-                browser.close()
-                return summary
+                    if not posts:
+                        logger.warning(f"[AI SPAM] 게시물을 찾을 수 없음: {config.board_url}")
+                        summary["status"] = "warning"
+                        summary["error"] = "게시물을 찾을 수 없습니다. 게시판 구조가 일반적이지 않을 수 있습니다."
+                        return summary
 
-            logger.info(f"[AI SPAM] {len(posts)}개 게시물 분석 중...")
+                    logger.info(f"[AI SPAM] {len(posts)}개 게시물 분석 중...")
 
-            classifications = classify_posts_ai(posts, keywords)
+                    classifications = classify_posts_ai(posts, keywords)
 
-            spam_posts = [c for c in classifications if c.get("is_spam") and c.get("confidence", 0) >= 0.7]
-            summary["spam_detected"] = len(spam_posts)
-            summary["spam_posts"] = spam_posts
+                    spam_posts = [c for c in classifications if c.get("is_spam") and c.get("confidence", 0) >= 0.7]
+                    summary["spam_detected"] = len(spam_posts)
+                    summary["spam_posts"] = spam_posts
 
-            if classifications:
-                summary["classification_method"] = classifications[0].get("method", "unknown")
+                    if classifications:
+                        summary["classification_method"] = classifications[0].get("method", "unknown")
 
-            logger.info(f"[AI SPAM] 완료: 총 {len(posts)}개 중 스팸 {len(spam_posts)}개 탐지")
-
-            browser.close()
+                    logger.info(f"[AI SPAM] 완료: 총 {len(posts)}개 중 스팸 {len(spam_posts)}개 탐지")
+                finally:
+                    browser.close()
 
     except Exception as e:
         summary["status"] = "fail"
