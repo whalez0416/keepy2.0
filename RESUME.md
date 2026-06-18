@@ -3,6 +3,30 @@
 > 다음 세션에서 이 파일을 먼저 읽으면 현재 상태와 다음 할 일을 파악할 수 있습니다.
 > 마지막 작업 기준일: 2026-06-18
 
+## ⏸️ 퇴근 전 스냅샷 (여기부터 이어서) — 2026-06-18
+
+**지금 상태: 두 갈래가 떠 있음. 코드 작업은 다 끝났고, "내가 직접 해야 하는 외부 작업"만 남음.**
+
+### 갈래 A) Keepy 본제품 — 배포만 남음
+- 코드: 판매전 BLOCKER + 배포전 SHOULD-FIX 전부 처리 완료. **GitHub push까지 완료**(production-refactor, 최신 9768328). 로컬=origin 동기화됨.
+- **다음 할 일(내가 브라우저로 로그인해야 하는 부분, AI가 대신 못함):**
+  1. **Supabase**에서 Postgres 프로젝트 생성(Region: Seoul) → 연결 URL(postgresql://...) 복사
+  2. **Render** → New → **Blueprint** → repo `whalez0416/keepy2.0` 연결(render.yaml 자동인식) → 환경변수 값 채우기:
+     - `SECRET_KEY` = `OgMiiGtiXWV8eUi3cs0EJpeZnDa4OW6qOknwpgz9RMmIC7y5lkQ0da1mSvK4027b`
+     - `DATABASE_URL` = (Supabase URL) / `MASTER_EMAIL`·`MASTER_PASSWORD` / `OPENAI_API_KEY`
+     - `SMTP_USER`=chjandhot@gmail.com / `SMTP_PASSWORD`=Gmail앱비번 / `SMTP_FROM_EMAIL`=chjandhot@gmail.com / `DEBUG`=false
+  3. 빌드 완료 후 주소 확인 → **production-refactor를 main에 머지**(AI가 git으로 처리 가능)
+  - ⚠️ 환경변수 세팅 "먼저", main 머지 "나중"(SECRET_KEY 없으면 부팅 실패)
+  - SMTP는 chjandhot@gmail.com로 실발송 검증됨. 앱비번은 .env에 이미 있음(배포엔 별도 입력 필요).
+
+### 갈래 B) 영업용 메일링 도구 — 1차 완성, 로컬 테스트만 남음
+- 위치 `C:\python\keepy new\keepy_outreach` (keepy_mvp와 별개 폴더, 아직 git 아님).
+- 완성+검증됨(수집/(광고)강제/수신거부/전라우트). 상세는 그 폴더 README.md + 메모 [[keepy-outreach-tool]].
+- **다음 할 일:** `cp .env.example .env`로 SMTP·SENDER_* 채우고 `uvicorn app.main:app --reload --port 8001` → http://localhost:8001 에서 ①수집 ②연락처 ③테스트발송 순으로 한번 돌려보기.
+- 보완 후보: CSV 일괄 import, 발송 리포트, 본문 템플릿 저장. 실발송 캠페인은 수신거부 링크 동작 위해 외부 배포(PUBLIC_BASE_URL) 필요.
+
+---
+
 ## 🟢 2026-06-18 (2차) — 판매가능성 종합 점검 + BLOCKER 정비 완료
 
 서브에이전트 4명 병렬 종합검토(보안/멀티테넌시·체커 견고성·영업문구 정직성·운영안정성)
