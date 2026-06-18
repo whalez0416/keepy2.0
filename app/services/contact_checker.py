@@ -32,52 +32,80 @@ def check_contact(db: Session, contact_config: ContactConfig):
                 page.wait_for_load_state("networkidle")
                 
                 # 2. 연락처 데이터 추출
-                
-                # (1) 전화번호 체크
-                found_phone = None
+                # 병원 사이트는 전화번호를 tel: 링크가 아니라 '평문 텍스트'로 적는 경우가
+                # 훨씬 많다. 따라서 tel: 링크뿐 아니라 페이지 본문 텍스트에서도 번호를 찾고,
+                # 카카오 링크도 페이지 내 모든 a[href]를 훑어 후보를 모은다.
+
+                # (1) 전화번호 후보 모으기 (tel: 링크 + 본문 텍스트의 전화번호 패턴)
+                phone_candidates = set()  # 숫자만 정규화한 값들
                 phone_sel = contact_config.phone_selector or 'a[href^="tel:"]'
                 try:
-                    phone_element = page.query_selector(phone_sel)
-                    if phone_element:
-                        href = phone_element.get_attribute("href")
-                        # 'tel:02-123-4567' -> '02-123-4567'
-                        found_phone = href.replace("tel:", "").strip()
+                    for el in page.query_selector_all(phone_sel):
+                        href = el.get_attribute("href") or el.inner_text()
+                        if href:
+                            d = re.sub(r'[^0-9]', '', href.replace("tel:", ""))
+                            if len(d) >= 8:
+                                phone_candidates.add(d)
                 except Exception as e:
-                    logger.error(f"전화번호 추출 실패: {e}")
+                    logger.debug(f"전화번호 셀렉터 추출 건너뜀: {e}")
 
-                # (2) 카카오톡 링크 체크
-                found_kakao = None
-                kakao_sel = contact_config.kakao_selector or 'a[href*="kakao.com"], a[href*="pf.kakao.com"]'
+                page_text = ""
                 try:
-                    kakao_element = page.query_selector(kakao_sel)
-                    if kakao_element:
-                        found_kakao = kakao_element.get_attribute("href").strip()
-                except Exception as e:
-                    logger.error(f"카카오 링크 추출 실패: {e}")
+                    page_text = page.inner_text("body")
+                except Exception:
+                    page_text = page.content()
+                for m in re.findall(r'0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}', page_text):
+                    d = re.sub(r'[^0-9]', '', m)
+                    if len(d) >= 8:
+                        phone_candidates.add(d)
 
-                # 3. 무결성 검증 (정규화 후 비교)
-                
-                # 전화번호 비교 (숫자만 남겨서 비교)
+                # (2) 카카오 링크 후보 모으기 (페이지 내 모든 a[href] 중 카카오 도메인)
+                kakao_candidates = set()
+                try:
+                    for el in page.query_selector_all('a[href]'):
+                        href = (el.get_attribute("href") or "").strip()
+                        if href and ("kakao.com" in href or "pf.kakao.com" in href or "open.kakao" in href):
+                            kakao_candidates.add(href)
+                except Exception as e:
+                    logger.debug(f"카카오 링크 추출 건너뜀: {e}")
+
+                # 3. 무결성 검증
+                # 핵심 원칙(오경보 방지): 기대값이 페이지 어딘가에 그대로 있으면 '정상'.
+                # 기대값은 없는데 '다른' 연락처가 보이면 '변조 의심'(경보).
+                # 아무 연락처도 못 찾으면(이미지/JS 렌더 등) 섣불리 긴급경보 하지 않고 판단 보류.
+                inconclusive = []
+
                 if contact_config.expected_phone:
                     expected_norm = re.sub(r'[^0-9]', '', contact_config.expected_phone)
-                    found_norm = re.sub(r'[^0-9]', '', found_phone) if found_phone else ""
-                    
-                    if not found_phone:
+                    matched = any(expected_norm in c or c in expected_norm for c in phone_candidates)
+                    if matched:
+                        pass  # 기대 번호 존재 → 정상
+                    elif phone_candidates:
                         status = "fail"
-                        fail_reasons.append("전화번호 링크를 찾을 수 없습니다.")
-                    elif expected_norm != found_norm:
-                        status = "fail"
-                        fail_reasons.append(f"전화번호가 변조되었습니다 (기대: {contact_config.expected_phone}, 발견: {found_phone})")
+                        fail_reasons.append(
+                            f"전화번호 변조 의심: 기대 번호({contact_config.expected_phone})가 보이지 않고 "
+                            f"다른 번호가 노출됨 (발견: {', '.join(sorted(phone_candidates))})")
+                    else:
+                        inconclusive.append("전화번호를 페이지에서 찾지 못함(이미지/스크립트 표기 가능) — 확인 필요")
 
-                # 카카오 링크 비교
                 if contact_config.expected_kakao_url:
-                    if not found_kakao:
+                    matched = any(contact_config.expected_kakao_url in k for k in kakao_candidates)
+                    if matched:
+                        pass  # 기대 카카오 링크 존재 → 정상
+                    elif kakao_candidates:
                         status = "fail"
-                        fail_reasons.append("카카오톡 상담 링크를 찾을 수 없습니다.")
-                    elif contact_config.expected_kakao_url not in found_kakao:
-                        status = "fail"
-                        fail_reasons.append(f"카카오톡 링크가 변조되었습니다 (기대: {contact_config.expected_kakao_url}, 발견: {found_kakao})")
+                        fail_reasons.append(
+                            f"카카오 링크 변조 의심: 기대 링크가 보이지 않고 다른 카카오 링크가 노출됨 "
+                            f"(발견: {', '.join(sorted(kakao_candidates))})")
+                    else:
+                        inconclusive.append("카카오 상담 링크를 찾지 못함 — 확인 필요")
 
+                # 판단 보류 항목은 경보(fail) 없이 정보성으로만 기록
+                if inconclusive and status != "fail":
+                    fail_reasons.extend(inconclusive)
+
+                found_phone = ", ".join(sorted(phone_candidates)) if phone_candidates else None
+                found_kakao = ", ".join(sorted(kakao_candidates)) if kakao_candidates else None
                 browser.close()
             
         response_time = time.time() - start_time

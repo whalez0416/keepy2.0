@@ -10,6 +10,12 @@ from .browser_pool import browser_semaphore
 
 logger = get_logger("visual_checker")
 
+# 유사도가 이 값 미만이면 '변조 의심'. 병원 홈페이지는 메인 배너 슬라이드·팝업·
+# 공지 등이 매일 바뀌므로(=픽셀 차이 큼) 임계값을 높게 두면 오경보가 쏟아진다.
+# 실제 변조(해커가 페이지 전체를 갈아끼움)는 유사도가 매우 낮게 나오므로,
+# 임계값을 낮춰 '전면적 변화'에만 반응하게 한다. (배너 회전 정도로는 안 울림)
+VISUAL_SIMILARITY_THRESHOLD = 60.0
+
 def check_visual_defacement(db: Session, site: Site):
     """
     홈페이지의 시각적 변화를 탐지합니다.
@@ -58,8 +64,8 @@ def check_visual_defacement(db: Session, site: Site):
                 similarity = compare_images(baseline_full_path, current_path)
                 logger.debug(f"이미지 유사도: {similarity:.2f}%")
                 
-                # 유사도가 90% 미만이면 변조 의심
-                if similarity < 90.0:
+                # 임계값 미만이면 변조 의심 (배너/팝업 회전 정도로는 안 울리게 낮게 설정)
+                if similarity < VISUAL_SIMILARITY_THRESHOLD:
                     status = "warning"
                     fail_reason = f"⚠️ [변조 의심] 홈페이지 화면이 평소와 다릅니다. (유사도: {similarity:.2f}%)"
                     # Alert 생성/이메일은 스케줄러가 handle_check_result로 일원화 처리한다.

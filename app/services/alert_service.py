@@ -66,6 +66,10 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
         # SSL 만료/오류: fail=긴급, warning=만료 임박
         should_alert = True
         alert_level = "danger" if status == "fail" else "warning"
+    elif check_type == "admin_exposure" and status == "warning":
+        # 관리자 페이지가 로그인 없이 노출 의심 — 보안 긴급
+        should_alert = True
+        alert_level = "danger"
     elif check_type == "homepage" and status == "fail":
         # 이전 점검 결과도 실패였는지 확인 (2회 연속 실패 시 알림)
         last_logs = db.query(Log).filter(

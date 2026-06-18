@@ -89,7 +89,10 @@ def run_site_check(site_id: int, check_type: str, extra_id: int = None):
                 handle_check_result(db, site, "visual_defacement", log.status, log.fail_reason)
             
         elif check_type == "admin_watch":
-            check_admin_exposure(db, site)
+            log = check_admin_exposure(db, site)
+            # warning(무인증 노출 의심)만 알림. fail(시스템 오류)은 제외.
+            if log and log.status == "warning":
+                handle_check_result(db, site, "admin_exposure", "warning", log.fail_reason)
             
     except Exception as e:
         logger.error(f"예약된 점검 실행 중 오류 발생: {str(e)}")

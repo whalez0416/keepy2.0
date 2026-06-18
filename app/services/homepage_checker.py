@@ -29,10 +29,23 @@ def check_homepage(db: Session, site: Site):
         
         status = "success"
         fail_reason = None
-        
+
         if response.status_code >= 400:
             status = "fail"
             fail_reason = f"HTTP {response.status_code}"
+        else:
+            # 호스팅/도메인 만료 시 흔히 200을 반환하는 '정지/주차 페이지'를 다운으로 잡는다.
+            # (HTTP 200이라 상태코드만 보면 정상으로 오인되는 가장 흔한 실제 장애 유형)
+            low = (response.text or "").lower()
+            _DOWN_SIGNALS = [
+                "계정이 정지", "계정은 정지", "서비스가 정지", "이용이 정지", "정지되었습니다",
+                "도메인이 만료", "도메인 만료", "호스팅 만료", "서비스 기간이 만료", "만료되었습니다",
+                "구매가 가능한 도메인", "도메인 주차", "account suspended", "suspended",
+                "this domain is parked", "domain is for sale", "this account has been suspended",
+            ]
+            if any(s in low or s in (response.text or "") for s in _DOWN_SIGNALS):
+                status = "fail"
+                fail_reason = "사이트가 정지/만료(주차) 페이지로 보입니다 — 호스팅·도메인 상태 확인 필요"
         
         # SSL 체크 추가
         ssl_status = "success"
