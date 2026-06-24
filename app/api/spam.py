@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from .. import models, schemas
 from ..services.ai_spam_classifier import run_ai_spam_hunter, classify_posts_ai
+from ..services.alert_service import handle_check_result
 from ..utils.logger import get_logger
 from ..utils.url_guard import is_public_url
 from .auth import get_current_user, require_org_writer
@@ -107,6 +108,10 @@ def create_spam_config(config: SpamConfigCreate, db: Session = Depends(get_db), 
         raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
     require_org_writer(db, current_user, site.org_id)
 
+    # SSRF 방어: 서버가 주기적으로 fetch할 게시판 URL 검증
+    if not is_public_url(config.board_url):
+        raise HTTPException(status_code=400, detail="게시판 주소: 내부망/사설 주소는 등록할 수 없습니다.")
+
     db_config = models.SpamConfig(**config.model_dump())
     db.add(db_config)
     db.commit()
@@ -134,6 +139,16 @@ def run_spam_config(config_id: int, db: Session = Depends(get_db), current_user:
     require_org_writer(db, current_user, site.org_id)
 
     result = run_ai_spam_hunter(db, config)
+    # 스팸이 탐지되면 즉시 알림(스케줄러와 동일 경로). 쿨다운으로 중복은 자동 억제됨.
+    if result and result.get("spam_detected", 0) > 0:
+        titles = ", ".join(
+            p.get("title", "")[:30] for p in result.get("spam_posts", [])[:5]
+        )
+        msg = (
+            f"🚫 [스팸 탐지] {site.site_name} 게시판에서 의심 게시물 "
+            f"{result['spam_detected']}건이 발견되었습니다. (예: {titles})"
+        )
+        handle_check_result(db, site, "spam", "warning", msg)
     return result
 
 

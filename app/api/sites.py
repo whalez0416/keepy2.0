@@ -4,9 +4,19 @@ from typing import List
 from ..db import get_db
 from .. import models, schemas
 from ..services.scheduler_service import update_site_jobs, remove_site_jobs
+from ..utils.url_guard import is_public_url
 from .auth import get_current_user, require_org_writer
 
 router = APIRouter(tags=["sites"])
+
+
+def _guard_url(url, label: str):
+    """저장될 URL이 공인 주소인지 검증(SSRF 방어). 빈 값은 통과."""
+    if url and not is_public_url(url):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{label}: 내부망/사설 주소 또는 잘못된 URL은 등록할 수 없습니다.",
+        )
 
 @router.post("/", response_model=schemas.Site)
 def create_site(site: schemas.SiteCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -22,6 +32,13 @@ def create_site(site: schemas.SiteCreate, db: Session = Depends(get_db), current
 
     # 쓰기 권한 확인(VIEWER 차단)
     require_org_writer(db, current_user, org_id)
+
+    # SSRF 방어: 서버가 주기적으로 fetch할 모든 URL을 저장 전에 검증
+    _guard_url(site.homepage_url, "홈페이지 주소")
+    for form in (site.form_configs or []):
+        _guard_url(form.form_url, "상담폼 주소")
+    for spam in (site.spam_configs or []):
+        _guard_url(spam.board_url, "게시판 주소")
 
     # Site 데이터 추출 (DB 모델에 없는 필드 제외)
     exclude_fields = {"form_configs", "spam_configs", "org_id", "expected_phone", "expected_kakao_url"}
@@ -92,6 +109,13 @@ def update_site(site_id: int, site_update: schemas.SiteUpdate, db: Session = Dep
 
     # 쓰기 권한 확인(VIEWER 차단)
     require_org_writer(db, current_user, db_site.org_id)
+
+    # SSRF 방어: 변경되는 URL을 저장 전에 검증
+    _guard_url(site_update.homepage_url, "홈페이지 주소")
+    for form in (site_update.form_configs or []):
+        _guard_url(form.form_url, "상담폼 주소")
+    for spam in (site_update.spam_configs or []):
+        _guard_url(spam.board_url, "게시판 주소")
 
     update_data = site_update.model_dump(exclude_unset=True, exclude={"form_configs", "spam_configs"})
     

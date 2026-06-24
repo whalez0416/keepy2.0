@@ -111,7 +111,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onSwitchToRegiste
 
         <div className="mt-8 text-center flex flex-col gap-3">
           <div className="text-slate-500 text-sm font-bold">
-            가입 및 서비스 발급 문의: 02-1234-5678
+            가입 및 서비스 발급 문의: 010-6616-3032
           </div>
           <button
             onClick={onSwitchToRegister}

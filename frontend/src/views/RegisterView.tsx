@@ -58,11 +58,11 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
             <div className="grid grid-cols-2 gap-3 text-xs font-bold text-slate-300">
               <div className="flex items-center gap-2.5 glass p-3 rounded-xl border-white/5">
                 <Mail size={16} className="text-blue-400" />
-                <span>master@keepy.com</span>
+                <span>chjandhot@gmail.com</span>
               </div>
               <div className="flex items-center gap-2.5 glass p-3 rounded-xl border-white/5">
                 <Phone size={16} className="text-[#9fb2c2]" />
-                <span>02-1234-5678</span>
+                <span>010-6616-3032</span>
               </div>
             </div>
           </div>
