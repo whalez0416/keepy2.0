@@ -92,9 +92,16 @@ def run_site_check(site_id: int, check_type: str, extra_id: int = None):
 def update_site_jobs(site: Site):
     # 해당 사이트의 기존 작업 제거
     remove_site_jobs(site.id)
-    
+
     if not site.is_active:
         return
+
+    # 점검 시각 분산(thundering herd 방지): 모든 사이트의 무거운 브라우저 점검이 같은 시각
+    # (예: 새벽 3·4시 정각)에 몰리면 단일 세마포어에 줄서다 뒤 순번이 누락된다. 사이트 id로
+    # 결정적 오프셋을 만들어 분 단위로 흩뿌린다(같은 사이트는 항상 같은 시각 → 재현성 유지).
+    minute_offset = (site.id * 13) % 60          # 0~59분 분산
+    # interval 점검(부팅 때 한꺼번에 등록돼 동시에 발화하는 것)도 ±최대 5분 jitter로 흩는다.
+    interval_jitter = 300
 
     # 홈페이지 체크 작업 추가
     scheduler.add_job(
@@ -102,9 +109,10 @@ def update_site_jobs(site: Site):
         'interval',
         minutes=site.check_interval_minutes,
         args=[site.id, "homepage"],
-        id=f"site_{site.id}_homepage"
+        id=f"site_{site.id}_homepage",
+        jitter=interval_jitter,
     )
-    
+
     # 여러 상담폼 체크 작업 추가
     for form in site.form_configs:
         if form.is_active:
@@ -113,9 +121,10 @@ def update_site_jobs(site: Site):
                 'interval',
                 minutes=form.check_interval_minutes,
                 args=[site.id, "form", form.id],
-                id=f"site_{site.id}_form_{form.id}"
+                id=f"site_{site.id}_form_{form.id}",
+                jitter=interval_jitter,
             )
-    
+
     # 스팸 헌터 작업 추가 (예: 6시간마다)
     if site.spam_configs:
         scheduler.add_job(
@@ -123,9 +132,10 @@ def update_site_jobs(site: Site):
             'interval',
             hours=6,
             args=[site.id, "spam"],
-            id=f"site_{site.id}_spam"
+            id=f"site_{site.id}_spam",
+            jitter=interval_jitter,
         )
-    
+
     # 연락처 변조 체크 작업 추가 (기본 1시간)
     if site.contact_configs:
         scheduler.add_job(
@@ -133,38 +143,40 @@ def update_site_jobs(site: Site):
             'interval',
             minutes=60,
             args=[site.id, "contact"],
-            id=f"site_{site.id}_contact"
+            id=f"site_{site.id}_contact",
+            jitter=interval_jitter,
         )
-    
-    # SSL 자동 연장 체크 (매일 새벽 3시)
+
+    # SSL 만료 체크 (매일 새벽 — 사이트별로 1~2시대에 분산)
     scheduler.add_job(
         run_site_check,
         'cron',
-        hour=3,
-        minute=0,
+        hour=1 + (site.id % 2),       # 새벽 1~2시
+        minute=minute_offset,
         args=[site.id, "ssl_renewal"],
         id=f"site_{site.id}_ssl_renewal"
     )
-    
-    # 비주얼 변조 체크 (매일 새벽 4시 - 무거운 작업이므로 빈도 낮게)
+
+    # 비주얼 변조 체크 (매일 새벽 — 무거우므로 3~5시대에 분산)
     scheduler.add_job(
         run_site_check,
         'cron',
-        hour=4,
-        minute=0,
+        hour=3 + (site.id % 3),       # 새벽 3~5시
+        minute=minute_offset,
         args=[site.id, "visual"],
         id=f"site_{site.id}_visual"
     )
-    
+
     # 관리자 페이지 감시 (6시간마다)
     scheduler.add_job(
         run_site_check,
         'interval',
         hours=6,
         args=[site.id, "admin_watch"],
-        id=f"site_{site.id}_admin_watch"
+        id=f"site_{site.id}_admin_watch",
+        jitter=interval_jitter,
     )
-    
+
     logger.debug(f"사이트 작업 업데이트 완료: site_id={site.id}")
 
 def remove_site_jobs(site_id: int):
