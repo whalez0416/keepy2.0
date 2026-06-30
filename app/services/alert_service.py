@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from ..models import Site, Log, Alert
 from .email_service import send_alert_email
+from .slack_service import send_alert_delivery_failure
 from ..config import settings
 from ..utils.logger import get_logger
 
@@ -142,3 +143,18 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
             alert.sent_at = datetime.utcnow()
             db.commit()
             logger.debug(f"알림 발송 완료: site_id={site.id} check_type={check_type}")
+        else:
+            # 재시도까지 모두 실패 → 알림이 조용히 사라지지 않도록 운영자에게 슬랙으로 통보.
+            # alert.sent_at은 None으로 남아 '미발송' 추적(/api/alerts/undelivered)에 잡힌다.
+            logger.error(
+                f"알림 이메일 최종 실패 — 운영자 통보 시도: site_id={site.id} type={check_type}"
+            )
+            try:
+                send_alert_delivery_failure(
+                    site_name=site.site_name,
+                    check_type=check_type,
+                    message=fail_reason,
+                    recipients=emails,
+                )
+            except Exception as e:
+                logger.error(f"슬랙 통보 중 오류(무시하고 진행): {e}")

@@ -1,4 +1,5 @@
 import smtplib
+import time
 from email.header import Header
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -6,6 +7,11 @@ from ..config import settings
 from ..utils.logger import get_logger
 
 logger = get_logger("email_service")
+
+# 알림 발송은 제품의 핵심 가치다. 일시적 SMTP 오류(Gmail 순간 차단·TLS 끊김 등)로
+# 알림이 한 번에 사라지지 않도록 짧은 백오프로 재시도한다.
+_SMTP_MAX_ATTEMPTS = 3
+_SMTP_BACKOFF_SECONDS = [2, 5]  # 1차 실패 후 2초, 2차 실패 후 5초 대기
 
 def send_alert_email(site_name: str, check_type: str, status: str, fail_reason: str,
                      checked_at: str, recipients=None):
@@ -64,17 +70,26 @@ def send_alert_email(site_name: str, check_type: str, status: str, fail_reason: 
     msg['Subject'] = Header(subject, 'utf-8')
     msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
-    try:
-        # local_hostname을 명시적으로 고정한다. 지정하지 않으면 smtplib가 OS 호스트명을
-        # EHLO로 보내는데, 호스트명에 비ASCII(예: 한글 PC 이름)가 있으면 인코딩 오류로
-        # 발송이 통째로 실패한다.
-        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, local_hostname="localhost")
-        server.starttls()
-        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-        logger.debug(f"알림 이메일 발송 성공: site_name={site_name} 수신={to_list}")
-        return True
-    except Exception as e:
-        logger.error(f"알림 이메일 발송 실패: {str(e)}")
-        return False
+    last_error = None
+    for attempt in range(1, _SMTP_MAX_ATTEMPTS + 1):
+        try:
+            # local_hostname을 명시적으로 고정한다. 지정하지 않으면 smtplib가 OS 호스트명을
+            # EHLO로 보내는데, 호스트명에 비ASCII(예: 한글 PC 이름)가 있으면 인코딩 오류로
+            # 발송이 통째로 실패한다.
+            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, local_hostname="localhost", timeout=20)
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.send_message(msg)
+            server.quit()
+            logger.debug(f"알림 이메일 발송 성공: site_name={site_name} 수신={to_list} (시도 {attempt})")
+            return True
+        except Exception as e:
+            last_error = e
+            logger.warning(f"알림 이메일 발송 실패(시도 {attempt}/{_SMTP_MAX_ATTEMPTS}): {str(e)}")
+            if attempt < _SMTP_MAX_ATTEMPTS:
+                time.sleep(_SMTP_BACKOFF_SECONDS[attempt - 1])
+
+    # 모든 재시도 실패 — 호출측(alert_service)이 Slack 등으로 운영자에게 알리고
+    # 미발송(sent_at=None)으로 남겨 추적할 수 있도록 False 반환.
+    logger.error(f"알림 이메일 발송 최종 실패({_SMTP_MAX_ATTEMPTS}회): site_name={site_name} 사유={str(last_error)}")
+    return False
