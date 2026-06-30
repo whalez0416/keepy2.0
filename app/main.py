@@ -3,7 +3,7 @@ import socket
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from app.config import settings
 from app.db import engine, Base, SessionLocal, run_light_migrations
 from app.api import sites, logs, alerts, checks, spam, auth, organizations, leads, discovery
@@ -56,7 +56,62 @@ app.include_router(discovery.router, prefix="/api/discovery", tags=["Discovery A
 
 @app.get("/api/health")
 def health_check():
+    # Render의 healthCheckPath가 가리키는 엔드포인트. 웹 프로세스가 떠 있는지만 본다.
+    # (감시 스레드 상태로 502/503을 내면 재시작 루프 위험이 있어, 그 판정은 아래
+    #  /api/health/monitoring으로 분리한다.)
     return {"status": "ok", "message": "Keepy API Server is running"}
+
+
+# 감시(스케줄러)가 '실제로' 살아 동작 중인지 판정하는 엔드포인트.
+# 감시 제품의 급소: 웹은 멀쩡한데 백그라운드 스케줄러 스레드만 죽으면, 단순 헬스체크는
+# 계속 ok라서 아무도 감시 중단을 모른다. 이 엔드포인트를 외부 업타임 모니터(UptimeRobot
+# 무료 등)에 걸어두면, 감시가 멈추는 순간 운영자가 메일/문자로 통보받는다.
+# 최소 점검 주기(홈페이지 기본 5분)를 한참 넘겨도 새 로그가 없으면 '멈춤'으로 본다.
+_MONITORING_STALE_MINUTES = 20
+
+@app.get("/api/health/monitoring")
+def monitoring_health():
+    from datetime import datetime, timezone, timedelta
+    from app.models import Site, Log
+
+    scheduler_running = bool(getattr(scheduler, "running", False))
+
+    db = SessionLocal()
+    try:
+        active_sites = db.query(Site).filter(Site.is_active == True).count()
+        last_log = db.query(Log).order_by(Log.checked_at.desc()).first()
+        last_check_at = last_log.checked_at if last_log else None
+    finally:
+        db.close()
+
+    minutes_since = None
+    stale = False
+    if last_check_at is not None:
+        # checked_at은 timezone=True라 Postgres에선 aware, SQLite에선 naive로 온다.
+        lc = last_check_at
+        if lc.tzinfo is not None:
+            lc = lc.astimezone(timezone.utc).replace(tzinfo=None)
+        minutes_since = (datetime.utcnow() - lc).total_seconds() / 60.0
+        stale = minutes_since > _MONITORING_STALE_MINUTES
+
+    # 감시 건강 판정:
+    #  - 스케줄러가 안 돌면 무조건 비정상.
+    #  - 감시할 활성 사이트가 있는데도 한참 동안 점검 로그가 없으면(=스레드 wedge) 비정상.
+    #  - 활성 사이트가 0이면 점검할 게 없으니 정상(부팅 직후 포함).
+    healthy = scheduler_running and not (active_sites > 0 and (last_check_at is None or stale))
+
+    payload = {
+        "status": "ok" if healthy else "unhealthy",
+        "scheduler_running": scheduler_running,
+        "active_sites": active_sites,
+        "last_check_at": last_check_at.isoformat() if last_check_at else None,
+        "minutes_since_last_check": round(minutes_since, 1) if minutes_since is not None else None,
+        "stale_threshold_minutes": _MONITORING_STALE_MINUTES,
+    }
+    if not healthy:
+        # 503 → 외부 업타임 모니터가 '다운'으로 감지해 운영자에게 통보하게 한다.
+        return JSONResponse(status_code=503, content=payload)
+    return payload
 
 
 # ─────────────────────────────────────────────────────────────
