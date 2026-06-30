@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from ..models import Site, Log, Alert
@@ -54,7 +54,13 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
         ).first()
         # 안전장치: 점검 주기가 매우 긴 경우(예: 일간)에도 최소 하루에 한 번은 재고지할 수 있게,
         # 마지막 알림이 24시간 이상 지났으면 회복 여부와 무관하게 재알림 허용.
-        stale = last_alert.created_at < datetime.utcnow() - timedelta(hours=24)
+        # 주의: created_at 컬럼은 timezone=True라 Postgres(psycopg2)에서는 tz-aware로,
+        # SQLite에서는 naive로 돌아온다. naive utcnow와 직접 비교하면 Postgres에서
+        # TypeError(aware vs naive)가 나므로, 양쪽 모두 'naive UTC'로 정규화해 비교한다.
+        last_created = last_alert.created_at
+        if last_created.tzinfo is not None:
+            last_created = last_created.astimezone(timezone.utc).replace(tzinfo=None)
+        stale = last_created < datetime.utcnow() - timedelta(hours=24)
         if not recovered and not stale:
             logger.debug(f"알림 억제: site_id={site.id} type={check_type} (미해결 상태 지속 — 중복 알림 생략)")
             return
