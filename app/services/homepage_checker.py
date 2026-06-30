@@ -3,6 +3,7 @@ import time
 from sqlalchemy.orm import Session
 from ..models import Site, Log, Alert
 from ..utils.logger import get_logger
+from ..utils.url_guard import safe_get
 import ssl
 import socket
 from datetime import datetime
@@ -23,8 +24,8 @@ def check_homepage(db: Session, site: Site):
 
     start_time = time.time()
     try:
-        response = requests.get(site.homepage_url, timeout=10,
-                                headers=_BROWSER_HEADERS, allow_redirects=True)
+        # SSRF 안전 fetch: 요청 직전 호스트 재해석 + 리다이렉트 각 홉 재검증(내부주소 우회 차단)
+        response = safe_get(site.homepage_url, timeout=10, headers=_BROWSER_HEADERS)
         response_time = time.time() - start_time
         
         status = "success"

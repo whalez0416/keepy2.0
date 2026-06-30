@@ -50,34 +50,33 @@ def check_visual_defacement(db: Session, site: Site):
                 # 팝업 등이 뜰 수 있으므로 잠시 대기
                 time.sleep(2)
                 
-                # 2. 스크린샷 캡처
-                page.screenshot(path=current_path)
+                # 2. 스크린샷 캡처 (로그 화면 표시용 파일 + 비교용 바이트 둘 다 확보)
+                current_bytes = page.screenshot(path=current_path)
                 browser.close()
 
-        # 3. 기준 이미지와 비교
-        if not site.baseline_screenshot_path:
-            # 기준 이미지가 없으면 현재 이미지를 기준으로 설정
-            site.baseline_screenshot_path = db_current_path
+        # 3. 기준 이미지와 비교 — 기준 이미지는 DB(baseline_screenshot_data)에 보관한다.
+        #    Render 디스크는 재배포 시 사라지므로 파일 경로 기준은 매 배포마다 리셋돼
+        #    변조 탐지가 사실상 무력화됐다. DB 저장으로 기준이 영구 유지된다.
+        baseline_bytes = site.baseline_screenshot_data
+        if not baseline_bytes:
+            # 기준 이미지가 없으면 현재 이미지를 기준으로 설정(DB 저장)
+            site.baseline_screenshot_data = current_bytes
             db.commit()
-            logger.info(f"기준 이미지 설정 완료: site_id={site.id}")
+            logger.info(f"기준 이미지 설정 완료(DB 저장): site_id={site.id}")
         else:
-            # 이미지 비교 로직
-            baseline_full_path = os.path.join("app", "static", site.baseline_screenshot_path)
-            
-            if os.path.exists(baseline_full_path):
-                similarity = compare_images(baseline_full_path, current_path)
-                logger.debug(f"이미지 유사도: {similarity:.2f}%")
-                
-                # 임계값 미만이면 변조 의심 (배너/팝업 회전 정도로는 안 울리게 낮게 설정)
-                if similarity < VISUAL_SIMILARITY_THRESHOLD:
-                    status = "warning"
-                    fail_reason = f"⚠️ [변조 의심] 홈페이지 화면이 평소와 다릅니다. (유사도: {similarity:.2f}%)"
-                    # Alert 생성/이메일은 스케줄러가 handle_check_result로 일원화 처리한다.
-                    logger.warning(f"ALERT: 비주얼 변조 의심! site_id={site.id} similarity={similarity:.2f}%")
-            else:
-                logger.error(f"기준 이미지를 찾을 수 없습니다: {baseline_full_path}")
-                site.baseline_screenshot_path = db_current_path # 다시 설정
-                db.commit()
+            similarity = compare_image_bytes(baseline_bytes, current_bytes)
+            logger.debug(f"이미지 유사도: {similarity:.2f}%")
+
+            # 임계값 미만이면 변조 의심 (배너/팝업 회전 정도로는 안 울리게 낮게 설정)
+            if similarity < VISUAL_SIMILARITY_THRESHOLD:
+                status = "warning"
+                fail_reason = (
+                    f"⚠️ [화면 변화 감지 · 베타] 홈페이지 화면이 평소와 크게 다릅니다 "
+                    f"(유사도 {similarity:.2f}%). 디자인 개편·배너 교체일 수도 있으니 "
+                    f"육안으로 확인해 주세요. 실제 개편이라면 기준 이미지를 갱신하면 됩니다."
+                )
+                # Alert 생성/이메일은 스케줄러가 handle_check_result로 일원화 처리한다.
+                logger.warning(f"ALERT: 비주얼 변조 의심! site_id={site.id} similarity={similarity:.2f}%")
 
     except Exception as e:
         status = "fail"
@@ -99,24 +98,26 @@ def check_visual_defacement(db: Session, site: Site):
     
     return log
 
-def compare_images(path1, path2):
-    """
-    두 이미지의 유사도를 퍼센트로 반환합니다.
-    """
-    img1 = Image.open(path1).convert('RGB')
-    img2 = Image.open(path2).convert('RGB')
-    
+def _similarity(img1, img2):
+    """두 PIL 이미지의 유사도(%)를 RMS 차이 기반으로 계산."""
+    img1 = img1.convert('RGB')
+    img2 = img2.convert('RGB')
     # 크기가 다르면 맞춤 (보통 같은 URL이면 같아야 함)
     if img1.size != img2.size:
         img2 = img2.resize(img1.size)
-    
-    # 차이 계산
     diff = ImageChops.difference(img1, img2)
     stat = ImageStat.Stat(diff)
-    
-    # 통계 기반 유사도 계산 (RMS 차이가 작을수록 유사함)
-    # 완전 일치하면 0, 완전히 다르면 약 255
+    # RMS 차이가 작을수록 유사. 완전 일치=0, 완전 상이≈255.
     sum_rms = sum(stat.rms) / 3.0
-    similarity = max(0, 100 - (sum_rms / 255.0 * 100))
-    
-    return similarity
+    return max(0, 100 - (sum_rms / 255.0 * 100))
+
+
+def compare_images(path1, path2):
+    """두 이미지 파일의 유사도를 퍼센트로 반환."""
+    return _similarity(Image.open(path1), Image.open(path2))
+
+
+def compare_image_bytes(bytes1, bytes2):
+    """두 이미지(PNG 바이트)의 유사도를 퍼센트로 반환."""
+    import io
+    return _similarity(Image.open(io.BytesIO(bytes1)), Image.open(io.BytesIO(bytes2)))

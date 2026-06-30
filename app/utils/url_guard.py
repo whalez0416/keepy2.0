@@ -51,3 +51,31 @@ def validate_public_url(url: str):
     """공인 URL이 아니면 ValueError를 던진다(엔드포인트에서 400으로 변환)."""
     if not is_public_url(url):
         raise ValueError("내부망/사설 주소 또는 잘못된 URL은 허용되지 않습니다.")
+
+
+def safe_get(url: str, *, max_redirects: int = 5, **kwargs):
+    """SSRF에 안전한 requests.get.
+
+    저장 시점에만 URL을 검증하면, ①공인 URL이 내부주소(169.254.169.254 등)로
+    리다이렉트하거나 ②DNS를 나중에 내부 IP로 바꾸는(rebinding) 우회가 가능하다.
+    이 함수는 **요청 직전에** 호스트를 다시 해석해 공인 IP인지 확인하고, 리다이렉트를
+    자동으로 따르지 않고 각 홉의 Location을 매번 재검증하며 수동으로 따라간다.
+
+    requests를 import하는 쪽 부담을 줄이려 함수 안에서 지연 import한다.
+    """
+    import requests
+
+    kwargs.pop("allow_redirects", None)  # 항상 수동 처리(자동 추적 금지)
+    current = url
+    for _ in range(max_redirects + 1):
+        if not is_public_url(current):
+            raise ValueError(f"내부망/사설 주소로의 요청 차단: {current}")
+        resp = requests.get(current, allow_redirects=False, **kwargs)
+        if resp.is_redirect or resp.status_code in (301, 302, 303, 307, 308):
+            location = resp.headers.get("Location")
+            if not location:
+                return resp
+            current = requests.compat.urljoin(current, location)
+            continue
+        return resp
+    raise ValueError("리다이렉트가 너무 많습니다(우회 시도 가능).")

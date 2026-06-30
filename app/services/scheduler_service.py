@@ -18,10 +18,6 @@ from ..utils.logger import get_logger
 
 logger = get_logger("scheduler_service")
 
-# 연속 실패 횟수를 추적하는 카운터 (site_id -> consecutive_fail_count)
-_consecutive_fails: dict[int, int] = {}
-AUTO_DEACTIVATE_THRESHOLD = 5  # 연속 5회 실패 시 자동 비활성화
-
 def run_site_check(site_id: int, check_type: str, extra_id: int = None):
     db: Session = SessionLocal()
     try:
@@ -34,21 +30,11 @@ def run_site_check(site_id: int, check_type: str, extra_id: int = None):
             log = check_homepage(db, site)
             if log:
                 handle_check_result(db, site, "homepage", log.status, log.fail_reason)
-                
-                # 연속 실패 자동 비활성화 로직
-                if log.status == "fail":
-                    _consecutive_fails[site_id] = _consecutive_fails.get(site_id, 0) + 1
-                    if _consecutive_fails[site_id] >= AUTO_DEACTIVATE_THRESHOLD:
-                        site.is_active = False
-                        db.commit()
-                        remove_site_jobs(site_id)
-                        logger.warning(f"[자동 비활성화] site_id={site_id} ({site.site_name}): "
-                                       f"homepage 체크 연속 {AUTO_DEACTIVATE_THRESHOLD}회 실패로 모니터링 중지")
-                        _consecutive_fails.pop(site_id, None)
-                        return
-                else:
-                    _consecutive_fails.pop(site_id, None)  # 성공 시 카운터 리셋
-        
+                # NOTE: 과거엔 '연속 5회 실패 시 자동 비활성화'가 있었으나 제거함.
+                # 장기 장애야말로 고객이 알림받길 원하는 상황인데, 감시를 통째로 꺼버리면
+                # 복구도 감지 못 하고 침묵하게 된다. 반복 알림은 handle_check_result의
+                # '미해결 동안 1회만' 중복억제가 막으므로, 감시는 계속 유지한다.
+
         elif check_type == "form":
             form_config = db.query(FormConfig).get(extra_id)
             if form_config and form_config.is_active:

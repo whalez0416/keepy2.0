@@ -38,6 +38,10 @@ COPY --from=frontend-build /frontend/dist ./frontend/dist
 EXPOSE 8000
 
 # Gunicorn으로 FastAPI 실행 (Uvicorn Worker).
-# 스케줄러는 앱 내부 락으로 워커 1개에서만 동작하므로 워커 수를 늘려도 중복 실행되지 않음.
-# 워커 2개: Playwright(Chromium) 메모리를 고려해 512MB(starter) 환경에서 안전하게.
-CMD ["gunicorn", "app.main:app", "--workers", "2", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+# 워커 1개로 고정한다. 이유:
+#  1) Playwright(Chromium)는 점검 시 150~250MB를 쓰는데, 워커별 동시성 제한
+#     (browser_pool 세마포어)이 프로세스마다 따로라 워커 2개면 크롬 2개가 동시에
+#     떠 512MB(starter)를 초과 → 컨테이너 OOM-kill 위험이 가장 컸다.
+#  2) 빈 DB 첫 부팅 시 두 워커가 동시에 create_all 하다 한 워커가 충돌하던 경쟁도 사라진다.
+# 단일 워커로도 비동기(uvicorn) 처리라 소수 고객 트래픽에는 충분하다.
+CMD ["gunicorn", "app.main:app", "--workers", "1", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

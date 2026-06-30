@@ -174,6 +174,27 @@ def deactivate_site(site_id: int, db: Session = Depends(get_db), current_user: m
     remove_site_jobs(site_id)
     return {"status": "deactivated"}
 
+@router.post("/{site_id}/reset-baseline")
+def reset_visual_baseline(site_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """화면 변조 탐지의 '기준 이미지'를 초기화한다.
+
+    디자인 개편/배너 교체 등으로 정상 변화가 생긴 경우, 고객이 이 기능으로 기준을
+    재설정하면 다음 점검 때 현재 화면을 새 기준으로 잡는다(=오경보 해소).
+    """
+    query = db.query(models.Site).filter(models.Site.id == site_id)
+    if current_user.role != models.UserRole.SUPERADMIN:
+        query = query.join(models.Organization).join(models.OrganizationMember).filter(models.OrganizationMember.user_id == current_user.id)
+    db_site = query.first()
+    if not db_site:
+        raise HTTPException(status_code=404, detail="Site not found or access denied")
+
+    require_org_writer(db, current_user, db_site.org_id)
+
+    db_site.baseline_screenshot_data = None
+    db_site.baseline_screenshot_path = None
+    db.commit()
+    return {"status": "ok", "message": "기준 이미지를 초기화했습니다. 다음 화면 점검 때 현재 화면이 새 기준이 됩니다."}
+
 @router.get("/public/{site_id}/banner")
 def get_public_banner_status(site_id: int, db: Session = Depends(get_db)):
     """

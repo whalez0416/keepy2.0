@@ -14,6 +14,7 @@ from playwright.sync_api import sync_playwright, Page, Browser
 from urllib.parse import urljoin, urlparse
 from ..utils.logger import get_logger
 from .browser_pool import browser_semaphore
+from ..utils.url_guard import is_public_url
 
 logger = get_logger("auto_discovery")
 
@@ -245,6 +246,10 @@ def discover_site(homepage_url: str) -> Dict[str, Any]:
 
                     # 1. 홈페이지 접근
                     logger.info(f"[AUTO-DISCOVERY] 홈페이지 로드 중...")
+                    # SSRF 방어(심층): 진입 URL을 goto 직전에 다시 검증(내부주소/리바인딩 차단)
+                    if not is_public_url(homepage_url):
+                        result["error"] = "내부망/사설 주소는 허용되지 않습니다."
+                        return result
                     try:
                         page.goto(homepage_url, timeout=30000, wait_until="domcontentloaded")
                         page.wait_for_timeout(2000)
@@ -284,6 +289,13 @@ def discover_site(homepage_url: str) -> Dict[str, Any]:
 
                         form_url = link_info["url"]
                         if form_url == homepage_url:
+                            continue
+
+                        # SSRF 방어: 크롤링으로 얻은 링크는 내부주소(169.254.169.254 등)를
+                        # 가리킬 수 있으므로, 방문 전에 공인 주소인지 검증한다.
+                        if not is_public_url(form_url):
+                            logger.warning(f"[AUTO-DISCOVERY] 내부/사설 주소 링크 건너뜀: {form_url}")
+                            checked_count += 1
                             continue
 
                         logger.info(f"[AUTO-DISCOVERY] 폼 페이지 탐색: {form_url}")

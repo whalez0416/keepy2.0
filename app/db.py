@@ -36,12 +36,16 @@ def run_light_migrations():
     """
     from sqlalchemy import inspect, text
 
+    # 바이너리 컬럼 타입은 DB마다 다르다: Postgres=BYTEA, SQLite=BLOB.
+    _binary_type = "BLOB" if settings.DATABASE_URL.startswith("sqlite") else "BYTEA"
+
     # (table, column, DDL 타입) — nullable/기본값 컬럼만 추가하므로 기존 행에 안전.
     # 기본값은 SQLite/Postgres 모두에서 유효한 표현만 사용(boolean은 false).
     pending = [
         ("organizations", "notify_emails", "TEXT"),
         ("organizations", "notify_phones", "TEXT"),
         ("form_configs", "submit_test", "BOOLEAN DEFAULT false"),
+        ("sites", "baseline_screenshot_data", _binary_type),
     ]
 
     inspector = inspect(engine)

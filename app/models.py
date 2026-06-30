@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, Text, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, Text, Enum, LargeBinary
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -81,7 +81,10 @@ class Site(Base):
     homepage_url = Column(String, nullable=False)
     check_interval_minutes = Column(Integer, default=5)
     extra_steps_json = Column(Text, nullable=True)
-    baseline_screenshot_path = Column(String, nullable=True) # 시각적 변조 탐지용 기준 이미지
+    baseline_screenshot_path = Column(String, nullable=True) # (구) 파일경로 기반 기준 이미지 — 휘발성 디스크라 사용 중단
+    # 시각적 변조 탐지용 기준 이미지를 DB에 직접 저장(PNG 바이트).
+    # Render 디스크는 재배포 시 사라지므로, 파일이 아니라 DB에 보관해야 기준이 유지된다.
+    baseline_screenshot_data = Column(LargeBinary, nullable=True)
     emergency_mode_active = Column(Boolean, default=False) # 긴급 안내 배너 활성화 여부
     emergency_message = Column(String, nullable=True) # 긴급 안내 메시지
     admin_path = Column(String, default="/admin") # 관리자 페이지 경로

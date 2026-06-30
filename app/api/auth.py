@@ -74,6 +74,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     user = db.query(models.User).filter(models.User.email == email).first()
     if user is None:
         raise credentials_exception
+    # 비활성화된 계정은 이미 발급된 토큰(최대 24h 유효)으로도 접근 못 하게 차단.
+    # 해지/정지 고객을 막는 유일한 즉시 차단 수단(토큰 폐기 기능이 없으므로).
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="비활성화된 계정입니다.")
     return user
 
 

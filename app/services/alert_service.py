@@ -32,16 +32,32 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
         # 성공 시 로직 (필요 시 알림 해제 등 추가 가능)
         return
 
-    # 알림 쿨다운 확인
-    recent_alert = db.query(Alert).filter(
+    # 알림 중복 억제: '미해결 상태가 지속되는 동안 1번만' 보낸다.
+    # 과거엔 고정 1시간 쿨다운이라, 매일(SSL/화면)·6시간(스팸/관리자) 주기 점검은
+    # 쿨다운(1h)을 항상 넘겨 같은 문제로 매 주기 알림이 반복됐다.
+    # → 같은 check_type의 가장 최근 알림이 있고, 그 이후로 같은 점검이 '정상(success)'으로
+    #   돌아온 적이 없다면(=아직 미해결), 재알림하지 않는다. 정상 복구 후 재발하면 다시 알린다.
+    last_alert = db.query(Alert).filter(
         Alert.site_id == site.id,
         Alert.check_type == check_type,
-        Alert.created_at >= datetime.utcnow() - timedelta(hours=settings.ALERT_COOLDOWN_HOURS)
-    ).first()
+    ).order_by(desc(Alert.created_at)).first()
 
-    if recent_alert:
-        logger.debug(f"알림 억제: site_id={site.id} type={check_type} (쿨다운 시간 미경과)")
-        return
+    if last_alert:
+        # 마지막 알림 이후로 이 점검이 정상으로 회복된 로그가 있었는지 확인.
+        # (알림 check_type과 로그 check_type은 동일하다: homepage / form:<name> /
+        #  contact_hijack / visual_defacement / ssl / admin_exposure)
+        recovered = db.query(Log).filter(
+            Log.site_id == site.id,
+            Log.check_type == check_type,
+            Log.status == "success",
+            Log.checked_at > last_alert.created_at,
+        ).first()
+        # 안전장치: 점검 주기가 매우 긴 경우(예: 일간)에도 최소 하루에 한 번은 재고지할 수 있게,
+        # 마지막 알림이 24시간 이상 지났으면 회복 여부와 무관하게 재알림 허용.
+        stale = last_alert.created_at < datetime.utcnow() - timedelta(hours=24)
+        if not recovered and not stale:
+            logger.debug(f"알림 억제: site_id={site.id} type={check_type} (미해결 상태 지속 — 중복 알림 생략)")
+            return
 
     should_alert = False
     alert_level = "warning"
@@ -55,9 +71,14 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
         should_alert = True
         alert_level = "warning"
     elif check_type == "contact_hijack" and status == "fail":
-        # 헤드라인 기능: 전화번호/카카오 링크 변조 — 즉시 긴급 알림
-        should_alert = True
-        alert_level = "danger"
+        # 연락처 변조는 오탐 위험이 있다(대표번호가 이미지로 박혀 텍스트엔 팩스/지점번호만
+        # 노출되는 병원 사이트 등). 단발성 오탐을 거르기 위해 '2회 연속 fail'일 때만 경보한다.
+        recent = db.query(Log).filter(
+            Log.site_id == site.id, Log.check_type == "contact_hijack"
+        ).order_by(desc(Log.checked_at)).limit(2).all()
+        if len(recent) >= 2 and all(l.status == "fail" for l in recent):
+            should_alert = True
+            alert_level = "danger"
     elif check_type == "visual_defacement" and status in ("warning", "fail"):
         # 홈페이지 화면 변조 의심
         should_alert = True

@@ -47,3 +47,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
+
+# 운영(DEBUG=False)에서 DATABASE_URL을 깜빡하면 기본값(SQLite)로 조용히 떠서
+# 재배포 때마다 모든 고객 데이터가 사라진다(Render 디스크는 휘발성). 그런 침묵 실패보다
+# 부팅을 막아 즉시 알아채게 한다. (SECRET_KEY와 동일한 'loud failure' 정책)
+if not settings.DEBUG and settings.DATABASE_URL.strip().lower().startswith("sqlite"):
+    raise RuntimeError(
+        "운영 환경(DEBUG=False)에서 DATABASE_URL이 SQLite입니다. "
+        "Render/배포 환경변수에 관리형 PostgreSQL(postgresql://...) URL을 설정하세요. "
+        "(SQLite는 재배포 시 데이터가 사라지므로 운영 사용 금지)"
+    )

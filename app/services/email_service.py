@@ -24,15 +24,31 @@ def send_alert_email(site_name: str, check_type: str, status: str, fail_reason: 
     # 순서 보존 중복 제거
     seen = set()
     to_list = [r for r in to_list if not (r in seen or seen.add(r))]
-    if not to_list:
+
+    # 고객 수신처가 하나도 없으면 운영자에게 폴백한다. 다만 과거엔 이게 '조용히' 일어나
+    # 고객은 아무 알림도 못 받는데 시스템은 발송 성공으로 기록하던 위험이 있었다.
+    # → 폴백 시 제목/본문에 '수신처 미설정'을 명시해 운영자가 즉시 설정 누락을 알아채게 한다.
+    is_operator_fallback = not to_list
+    if is_operator_fallback:
         to_list = [settings.SMTP_USER]
-        logger.warning(f"수신 이메일 미설정 — 운영자({settings.SMTP_USER})에게 폴백 발송: {site_name}")
+        logger.warning(
+            f"⚠️ 수신 이메일 미설정 — 고객이 알림을 못 받습니다. 운영자({settings.SMTP_USER})에게 "
+            f"폴백 발송: {site_name}. 설정>알림 수신에 고객 이메일을 입력하세요."
+        )
 
     subject = f"[{settings.APP_NAME}] {site_name} - {check_type.upper()} {status.upper()} 알림"
+    if is_operator_fallback:
+        subject = "[수신처 미설정] " + subject
+
+    fallback_note = (
+        "\n    ⚠️ 이 고객은 알림 수신 이메일이 설정돼 있지 않아, 고객 대신 운영자에게 발송된\n"
+        "    메일입니다. 설정>알림 수신에 병원 담당자 이메일을 입력해야 고객에게 전달됩니다.\n"
+        if is_operator_fallback else ""
+    )
 
     body = f"""
     Keepy 모니터링 알림
-
+{fallback_note}
     사이트명: {site_name}
     점검 유형: {check_type}
     상태: {status}
