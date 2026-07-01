@@ -245,7 +245,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onLogout }) => {
                       className="w-full glass border border-white/5 rounded-2xl py-3.5 px-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all font-medium text-white"
                     />
                     <p className="text-xs text-slate-600 ml-1">
-                      비워두면 알림이 운영자에게만 전달됩니다. 장애를 빠르게 받으시려면 꼭 입력하세요.
+                      비워두면 가입 시 등록한 대표 이메일로 발송됩니다. 받으실 담당자를 따로 지정하려면 입력하세요 (여러 명 가능).
                     </p>
                   </div>
                   <div className="space-y-2">

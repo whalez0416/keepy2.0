@@ -14,15 +14,22 @@ OpenAI(GPT) API를 활용한 게시물 스팸 AI 판별 시스템
 
 import json
 import re
+import time
 from typing import List, Dict, Optional, Any
 from playwright.sync_api import sync_playwright, Page
 from sqlalchemy.orm import Session
 from ..models import Site, SpamConfig, Log
 from .browser_pool import browser_semaphore
+from . import slack_service
 from ..config import settings
 from ..utils.logger import get_logger
 
 logger = get_logger("ai_spam_classifier")
+
+# AI 분류가 실패해 키워드로 격하됐을 때 운영자 슬랙 통보 스로틀(사이트별).
+# OpenAI가 한동안 죽으면 매 점검마다 슬랙이 폭주하므로 사이트당 최소 간격을 둔다.
+_DEGRADED_NOTIFY_INTERVAL_SEC = 1800  # 30분
+_last_degraded_notify: Dict[int, float] = {}
 
 
 # ─────────────────────────────────────────
@@ -365,6 +372,20 @@ def classify_posts_ai(posts: List[Dict[str, str]], keywords: List[str]) -> List[
     return results
 
 
+def _notify_ai_degraded(config: SpamConfig) -> None:
+    """AI 분류 실패(키워드 격하)를 운영자에게 통보. 사이트별 스로틀로 폭주 방지."""
+    now = time.time()
+    last = _last_degraded_notify.get(config.site_id, 0)
+    if now - last < _DEGRADED_NOTIFY_INTERVAL_SEC:
+        return
+    _last_degraded_notify[config.site_id] = now
+    try:
+        site_name = config.site.site_name if config.site else f"site {config.site_id}"
+        slack_service.send_spam_ai_degraded(site_name, config.board_url)
+    except Exception as e:
+        logger.error(f"[AI SPAM] 격하 통보 실패: {e}")
+
+
 def run_ai_spam_hunter(db: Session, config: SpamConfig) -> Dict[str, Any]:
     """
     AI 스팸 헌터 메인 실행 함수 (탐지 + 결과 반환).
@@ -421,6 +442,12 @@ def run_ai_spam_hunter(db: Session, config: SpamConfig) -> Dict[str, Any]:
 
                     if classifications:
                         summary["classification_method"] = classifications[0].get("method", "unknown")
+
+                    # AI 품질 저하 감지: 키가 설정돼 있는데도 키워드로 격하됐다면
+                    # OpenAI 호출이 실패했다는 뜻 → 감시가 조용히 나빠지지 않도록 운영자에게 통보.
+                    if settings.OPENAI_API_KEY and summary["classification_method"] == "keyword":
+                        summary["ai_degraded"] = True
+                        _notify_ai_degraded(config)
 
                     logger.info(f"[AI SPAM] 완료: 총 {len(posts)}개 중 스팸 {len(spam_posts)}개 탐지")
                 finally:

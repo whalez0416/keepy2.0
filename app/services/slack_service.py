@@ -52,6 +52,25 @@ def send_alert_delivery_failure(site_name: str, check_type: str, message: str, r
     return ok
 
 
+def send_spam_ai_degraded(site_name: str, board_url: str) -> bool:
+    """OpenAI 스팸 분류가 실패해 키워드 방식으로 격하됐을 때 운영자에게 슬랙으로 통보.
+
+    키워드 폴백은 명백한 상업/불법 광고 일부만 잡아 탐지 정확도가 크게 떨어진다.
+    'AI가 조용히 꺼진 채 감시하는 척'하는 상황을 운영자가 즉시 알고 조치하도록 한다.
+    """
+    text = (
+        f"⚠️ *[Keepy 스팸 감시 품질 저하]* — AI 분류가 실패해 키워드 방식으로 격하됨\n"
+        f"🏥 *사이트:* {site_name}\n"
+        f"🔎 *게시판:* {board_url}\n\n"
+        f"OpenAI 호출이 실패했습니다(API 키 만료·사용 한도·네트워크 등). 현재 스팸 탐지는 "
+        f"키워드 매칭으로만 동작해 놓치는 스팸이 늘 수 있습니다. OPENAI_API_KEY 상태를 확인하세요."
+    )
+    ok = _post_to_slack(text)
+    if ok:
+        logger.info(f"스팸 AI 격하를 슬랙으로 운영자에게 통보함: {site_name}")
+    return ok
+
+
 def send_new_lead_notification(lead_data: dict):
     """
     새로운 무료 체험 신청(Lead)이 들어왔을 때 슬랙으로 알림을 보냅니다.
