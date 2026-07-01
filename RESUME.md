@@ -20,7 +20,7 @@
   - SMTP는 chjandhot@gmail.com로 실발송 검증됨. 앱비번은 .env에 이미 있음(배포엔 별도 입력 필요).
 
 ### 갈래 B) 영업용 메일링 도구 — 1차 완성, 로컬 테스트만 남음
-- 위치 `C:\python\keepy new\keepy_outreach` (keepy_mvp와 별개 폴더, 아직 git 아님).
+- 위치 `C:\python\keepy_outreach` (2026-07-01 `keepy new\` 밖으로 이동해 본제품과 완전 분리, 아직 git 아님).
 - 완성+검증됨(수집/(광고)강제/수신거부/전라우트). 상세는 그 폴더 README.md + 메모 [[keepy-outreach-tool]].
 - **다음 할 일:** `cp .env.example .env`로 SMTP·SENDER_* 채우고 `uvicorn app.main:app --reload --port 8001` → http://localhost:8001 에서 ①수집 ②연락처 ③테스트발송 순으로 한번 돌려보기.
 - 보완 후보: CSV 일괄 import, 발송 리포트, 본문 템플릿 저장. 실발송 캠페인은 수신거부 링크 동작 위해 외부 배포(PUBLIC_BASE_URL) 필요.
