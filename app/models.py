@@ -100,6 +100,16 @@ class Site(Base):
     spam_configs = relationship("SpamConfig", back_populates="site")
     contact_configs = relationship("ContactConfig", back_populates="site", cascade="all, delete-orphan")
 
+    # 연락처 감시 기대값은 ContactConfig에 저장되지만, API 응답(schemas.Site)은 이 이름으로
+    # 노출한다. 과거엔 이 속성이 없어 GET 응답이 항상 None → 수정 화면이 늘 빈칸으로 떴다.
+    @property
+    def expected_phone(self):
+        return self.contact_configs[0].expected_phone if self.contact_configs else None
+
+    @property
+    def expected_kakao_url(self):
+        return self.contact_configs[0].expected_kakao_url if self.contact_configs else None
+
 class FormConfig(Base):
     __tablename__ = "form_configs"
 

@@ -28,11 +28,12 @@ class Settings(BaseSettings):
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USER: str = os.getenv("SMTP_USER", "")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "no-reply@keepy.com")
+    # 미지정 시 발송 계정(SMTP_USER)으로 폴백. 미보유 도메인을 From으로 쓰면
+    # DMARC 불일치로 알림이 스팸함에 빠질 수 있다.
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "")
 
-    ALERT_COOLDOWN_HOURS: int = 1
-    HOMEPAGE_FAIL_THRESHOLD: int = 2
-    FORM_FAIL_THRESHOLD: int = 1
+    # 점검 로그 보존 기간(일). 지나면 매일 정리 작업에서 삭제(무한 성장 방지).
+    LOG_RETENTION_DAYS: int = int(os.getenv("LOG_RETENTION_DAYS", "180"))
 
     # 스크린샷 보존 기간(일). 이 기간이 지난 점검 스크린샷은 매일 자동 삭제된다.
     # 보관이 필요한 스크린샷은 사용자가 로그 상세에서 다운로드해 따로 보관한다.

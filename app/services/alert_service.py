@@ -2,8 +2,16 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from ..models import Site, Log, Alert
-from .email_service import send_alert_email
+from .email_service import send_alert_email, send_recovery_email
 from .slack_service import send_alert_delivery_failure
+
+# 알림 이메일의 시각은 한국 고객 기준(KST)으로 표기한다. UTC ISO 문자열을 그대로 내보내면
+# 새벽 장애 메일에 9시간 어긋난 시각이 찍혀 신뢰를 깎는다.
+KST = timezone(timedelta(hours=9))
+
+
+def _now_kst_str() -> str:
+    return datetime.now(KST).strftime("%Y-%m-%d %H:%M (한국시간)")
 from ..config import settings
 from ..utils.logger import get_logger
 
@@ -30,7 +38,27 @@ def _recipients_for_site(site: Site):
 
 def handle_check_result(db: Session, site: Site, check_type: str, status: str, fail_reason: str):
     if status == "success":
-        # 성공 시 로직 (필요 시 알림 해제 등 추가 가능)
+        # 정상 복구: 미해결 알림을 해결 처리한다(알림 내역의 '해결됨' 뱃지 근거).
+        unresolved = db.query(Alert).filter(
+            Alert.site_id == site.id,
+            Alert.check_type == check_type,
+            Alert.resolved_at.is_(None),
+        ).all()
+        if unresolved:
+            had_sent_danger = any(a.alert_level == "danger" and a.sent_at for a in unresolved)
+            for a in unresolved:
+                a.resolved_at = datetime.utcnow()
+            db.commit()
+            # 긴급(danger) 알림이 실제 발송됐던 건이면 복구 사실도 고객에게 알린다.
+            # (장애 메일만 받고 복구 메일이 없으면 고객은 끝났는지 알 수 없다)
+            if had_sent_danger:
+                emails, _ = _recipients_for_site(site)
+                send_recovery_email(
+                    site_name=site.site_name,
+                    check_type=check_type,
+                    checked_at=_now_kst_str(),
+                    recipients=emails,
+                )
         return
 
     # 알림 중복 억제: '미해결 상태가 지속되는 동안 1번만' 보낸다.
@@ -44,10 +72,12 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
     ).order_by(desc(Alert.created_at)).first()
 
     if last_alert:
-        # 마지막 알림 이후로 이 점검이 정상으로 회복된 로그가 있었는지 확인.
+        # 마지막 알림 이후 회복 여부: ① 해결 처리(resolved_at — success 경로가 세팅)
+        # 또는 ② 알림 이후 success 로그 존재(성공이 handle_check_result를 거치지 않는
+        # spam/visual 같은 유형용). 둘 중 하나면 '새 장애'로 보고 다시 알린다.
         # (알림 check_type과 로그 check_type은 동일하다: homepage / form:<name> /
-        #  contact_hijack / visual_defacement / ssl / admin_exposure)
-        recovered = db.query(Log).filter(
+        #  contact_hijack / visual_defacement / ssl / admin_exposure / spam)
+        recovered = last_alert.resolved_at is not None or db.query(Log).filter(
             Log.site_id == site.id,
             Log.check_type == check_type,
             Log.status == "success",
@@ -70,9 +100,15 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
     alert_level = "warning"
 
     if check_type.startswith("form") and status == "fail":
-        # 스케줄러는 "form:<폼이름>" 형태로 넘기므로 정확 일치가 아닌 접두어로 판별
-        should_alert = True
-        alert_level = "danger"
+        # 스케줄러는 "form:<폼이름>" 형태로 넘기므로 정확 일치가 아닌 접두어로 판별.
+        # Playwright 폼 점검은 느린 병원 서버에서 단발 타임아웃이 흔하므로,
+        # homepage/contact와 동일하게 '2회 연속 실패'일 때만 긴급 알림을 보낸다(오경보 방지).
+        recent = db.query(Log).filter(
+            Log.site_id == site.id, Log.check_type == check_type
+        ).order_by(desc(Log.checked_at)).limit(2).all()
+        if len(recent) >= 2 and all(l.status == "fail" for l in recent):
+            should_alert = True
+            alert_level = "danger"
     elif check_type == "spam" and status in ("warning", "fail"):
         # AI 스팸 헌터가 스팸을 탐지하면 알림
         should_alert = True
@@ -135,7 +171,7 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
             check_type=check_type,
             status=status,
             fail_reason=fail_reason,
-            checked_at=datetime.utcnow().isoformat(),
+            checked_at=_now_kst_str(),
             recipients=emails,
         )
 

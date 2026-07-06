@@ -117,15 +117,33 @@ def update_site(site_id: int, site_update: schemas.SiteUpdate, db: Session = Dep
     for spam in (site_update.spam_configs or []):
         _guard_url(spam.board_url, "게시판 주소")
 
-    update_data = site_update.model_dump(exclude_unset=True, exclude={"form_configs", "spam_configs"})
-    
+    # expected_phone/expected_kakao_url은 Site 컬럼이 아니라 ContactConfig에 저장된다.
+    # (과거엔 setattr로 유령 속성만 만들어 '저장 성공처럼 보이지만 DB엔 반영 안 되는' 버그)
+    update_data = site_update.model_dump(
+        exclude_unset=True,
+        exclude={"form_configs", "spam_configs", "expected_phone", "expected_kakao_url"},
+    )
+
     # Superadmin만 조직 변경 가능
     if "org_id" in update_data and current_user.role != models.UserRole.SUPERADMIN:
         del update_data["org_id"]
 
     for var, value in update_data.items():
         setattr(db_site, var, value)
-    
+
+    # 연락처 감시 기대값 upsert (기존 설정 갱신, 없으면 새로 생성)
+    contact_data = site_update.model_dump(
+        exclude_unset=True, include={"expected_phone", "expected_kakao_url"}
+    )
+    contact_data = {k: (v or None) for k, v in contact_data.items()}  # 빈 문자열은 '감시 안 함'
+    if contact_data:
+        contact = db_site.contact_configs[0] if db_site.contact_configs else None
+        if contact:
+            for var, value in contact_data.items():
+                setattr(contact, var, value)
+        elif contact_data.get("expected_phone") or contact_data.get("expected_kakao_url"):
+            db.add(models.ContactConfig(site_id=db_site.id, **contact_data))
+
     # 폼 설정 업데이트 (전체 교체 방식)
     if site_update.form_configs is not None:
         # 비밀번호는 응답으로 내려주지 않으므로(쓰기전용), 클라이언트가 빈 값으로 보낼 수 있다.

@@ -83,8 +83,6 @@ export interface Site {
   is_active: boolean;
   created_at: string;
   updated_at?: string;
-  last_check_status?: string;
-  last_check_at?: string;
   form_configs: FormConfig[];
   spam_configs: SpamConfig[];
 }

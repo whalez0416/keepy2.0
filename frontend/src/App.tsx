@@ -94,18 +94,6 @@ function App() {
     );
   }
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard': return <DashboardView key={`${refreshTrigger}-${selectedOrgId}`} onEditSite={handleEditSite} selectedOrgId={selectedOrgId} user={user} />;
-      case 'sites': return <SiteListView key={`${refreshTrigger}-${selectedOrgId}`} selectedOrgId={selectedOrgId} />;
-      case 'alerts': return <AlertHistoryView />;
-      case 'spam': return <SpamManagementView />;
-      case 'leads': return <LeadsAdminView />;
-      case 'settings': return <SettingsView onLogout={handleLogout} />;
-      default: return <DashboardView key={`${refreshTrigger}-${selectedOrgId}`} onEditSite={handleEditSite} selectedOrgId={selectedOrgId} user={user} />;
-    }
-  };
-
   return (
     <div className="min-h-screen flex text-slate-200 bg-[#080a0f] selection:bg-[#9fb2c2]/25">
       <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); navigate(`/${tab}`); }} onLogout={handleLogout} user={user} />
@@ -125,9 +113,12 @@ function App() {
               </div>
             )}
             
-            <button className="p-3 glass rounded-xl text-slate-400 hover:text-[#c8d4de] hover:border-[#9fb2c2]/30 transition-all relative">
+            <button
+              onClick={() => { setActiveTab('alerts'); navigate('/alerts'); }}
+              title="알림 내역"
+              className="p-3 glass rounded-xl text-slate-400 hover:text-[#c8d4de] hover:border-[#9fb2c2]/30 transition-all relative"
+            >
               <Bell size={20} />
-              <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#9fb2c2] rounded-full border-2 border-[#080a0f]" />
             </button>
             
             <button 
@@ -161,8 +152,9 @@ function App() {
 
         <div className="relative z-10">
           <Routes>
-            <Route path="/dashboard" element={<DashboardView onEditSite={handleEditSite} selectedOrgId={selectedOrgId} user={user} />} />
-            <Route path="/sites" element={<SiteListView selectedOrgId={selectedOrgId} />} />
+            {/* key: 사이트 저장/조직 변경 시 뷰를 다시 마운트해 목록을 재조회한다 */}
+            <Route path="/dashboard" element={<DashboardView key={`${refreshTrigger}-${selectedOrgId}`} onEditSite={handleEditSite} selectedOrgId={selectedOrgId} user={user} />} />
+            <Route path="/sites" element={<SiteListView key={`${refreshTrigger}-${selectedOrgId}`} selectedOrgId={selectedOrgId} />} />
             <Route path="/alerts" element={<AlertHistoryView />} />
             <Route path="/spam" element={<SpamManagementView />} />
             <Route path="/leads" element={<LeadsAdminView />} />

@@ -214,7 +214,13 @@ def cleanup_old_screenshots():
             Log.checked_at < cutoff_dt,
             Log.screenshot_path.isnot(None),
         ).update({Log.screenshot_path: None}, synchronize_session=False)
+
+        # 점검 로그 자체도 보존기간이 지나면 삭제(무한 성장 방지 — 5분 주기면 사이트당 연 10만행).
+        log_cutoff = datetime.utcnow() - timedelta(days=settings.LOG_RETENTION_DAYS)
+        deleted_logs = db.query(Log).filter(Log.checked_at < log_cutoff).delete(synchronize_session=False)
         db.commit()
+        if deleted_logs:
+            logger.info(f"[정리] 보존 {settings.LOG_RETENTION_DAYS}일 초과 점검 로그 {deleted_logs}행 삭제")
     except Exception as e:
         logger.error(f"스크린샷 로그 경로 정리 중 오류: {e}")
     finally:

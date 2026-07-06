@@ -5,7 +5,6 @@ import {
   Activity, 
   AlertTriangle, 
   Settings,
-  Download,
   Brain,
   LogOut,
   Inbox
@@ -60,15 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
       </nav>
 
       <div className="p-4 mt-auto space-y-2">
-        <button className="w-full flex flex-col items-center justify-center gap-2 py-3 px-4 glass border-[#9fb2c2]/20 text-[#c8d4de] rounded-2xl hover:bg-[#9fb2c2]/10 transition-all font-bold shadow-lg shadow-black/40 group">
-          <div className="flex items-center gap-2">
-            <Download size={16} className="group-hover:translate-y-0.5 transition-transform" />
-            <span className="text-xs">데이터 마이그레이션</span>
-          </div>
-          <span className="text-[10px] opacity-60 font-medium italic">Keepy 1.0 (Render)</span>
-        </button>
-
-        <button 
+        <button
           onClick={() => {
             console.log("Sidebar logout initiated");
             onLogout();

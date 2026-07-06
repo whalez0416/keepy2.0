@@ -175,6 +175,9 @@ def serve_root_catchall(full_path: str):
 
 
 # 스케줄러 단일 프로세스 보장용 락 소켓 (gunicorn 워커가 여럿이어도 1개만 스케줄러 실행)
+# ⚠️ 워커를 2개 이상으로 늘릴 때 주의: 사이트 생성/수정 API가 락 없는 워커에서 처리되면
+# update_site_jobs가 그 워커의 (돌지 않는) 스케줄러에만 등록돼 재부팅 전까지 감시가 누락된다.
+# 워커 확장 전에 잡 등록을 DB 기반 폴링이나 스케줄러 워커로의 전달 방식으로 바꿔야 한다.
 _scheduler_lock_socket = None
 
 

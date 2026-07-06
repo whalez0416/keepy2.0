@@ -85,6 +85,7 @@ class SiteCreate(SiteBase):
 
 class SiteUpdate(BaseModel):
     site_name: Optional[str] = None
+    hospital_name: Optional[str] = None
     homepage_url: Optional[str] = None
     check_interval_minutes: Optional[int] = None
     extra_steps_json: Optional[str] = None

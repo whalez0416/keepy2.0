@@ -457,6 +457,8 @@ footer { border-top:1px solid var(--border); padding:60px 0; text-align:center; 
   .sec{padding:120px 0}
   header{padding:0 24px}
   .hdr-right .nav-link{display:none}
+  /* 모바일에서도 기존 고객의 로그인 진입은 유지 */
+  .hdr-right .nav-link[href="/app/login"]{display:inline-block}
   .ccard{padding:40px 24px}
   .hero-brand,.hero-brand-glow span{font-size:26vw;letter-spacing:-1.5vw; padding:20px 0;}
   .sc-card { padding: 32px 24px; }

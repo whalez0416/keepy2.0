@@ -66,3 +66,14 @@ def run_light_migrations():
             # 이미 다른 워커가 추가했거나 경합 — 무시(다음 부팅엔 존재 체크에서 걸러짐)
             from .utils.logger import get_logger
             get_logger("db").debug(f"마이그레이션 ADD COLUMN {table}.{column} 건너뜀: {e}")
+
+    # logs는 계속 쌓이는 테이블인데 조회(알림 중복억제·대시보드)가 전부 site_id+checked_at
+    # 기준이라, 인덱스가 없으면 데이터가 쌓일수록 점검 주기마다 풀스캔이 돈다.
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_logs_site_checked ON logs (site_id, checked_at)"
+            ))
+    except Exception as e:
+        from .utils.logger import get_logger
+        get_logger("db").debug(f"logs 인덱스 생성 건너뜀: {e}")

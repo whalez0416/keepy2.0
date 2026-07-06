@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Plus, 
-  Search, 
-  Filter, 
-  ExternalLink, 
+  Plus,
+  Search,
+  ExternalLink,
   MoreVertical,
   Activity,
   Edit2,
@@ -106,12 +105,6 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
             className="w-full glass border border-white/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-[#9fb2c2]/40 focus:border-[#9fb2c2]/50 outline-none transition-all placeholder:text-slate-600 font-medium text-white"
           />
         </div>
-        <button 
-          onClick={() => alert('실시간 검색 필터가 현재 목록에 즉시 반영되고 있습니다.')}
-          className="glass px-6 py-4 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all text-slate-300 font-bold border-white/10"
-        >
-          <Filter size={18} /> 필터 상세
-        </button>
       </div>
 
       {/* Sites Table */}
@@ -154,10 +147,10 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
                           <Globe size={12} className="opacity-50" />
                           <span className="truncate max-w-[200px]">{site.homepage_url}</span>
                         </div>
-                        {site.form_url && (
+                        {site.form_configs?.length > 0 && (
                           <div className="flex items-center gap-2 text-xs text-[#c8d4de]/70 font-medium">
                             <FileText size={12} className="opacity-50" />
-                            <span className="truncate max-w-[200px]">{site.form_url}</span>
+                            <span className="truncate max-w-[200px]">{site.form_configs[0].form_url}</span>
                           </div>
                         )}
                       </div>
@@ -165,8 +158,11 @@ const SiteListView: React.FC<SiteListViewProps> = ({ selectedOrgId = 'all' }) =>
                     <td className="px-8 py-6">
                       <div className="flex gap-1.5">
                         <span className="bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-blue-500/20">홈페이지</span>
-                        {site.form_url && (
+                        {site.form_configs?.length > 0 && (
                           <span className="bg-[#9fb2c2]/10 text-[#c8d4de] px-2.5 py-1 rounded-lg text-[10px] font-bold border border-[#9fb2c2]/20">상담폼</span>
+                        )}
+                        {site.spam_configs?.length > 0 && (
+                          <span className="bg-violet-500/10 text-violet-400 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-violet-500/20">스팸감시</span>
                         )}
                       </div>
                     </td>

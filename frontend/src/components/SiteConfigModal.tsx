@@ -28,13 +28,6 @@ interface SiteConfigModalProps {
   site?: Site | null;
 }
 
-interface ActionStep {
-  type: 'click' | 'type' | 'wait';
-  selector: string;
-  value?: string;
-  seconds?: number;
-}
-
 const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSave, site }) => {
   const [formData, setFormData] = useState({
     site_name: '',
@@ -54,7 +47,6 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
   const [spams, setSpams] = useState<Partial<SpamConfig>[]>([]);
   const [activeFormIndex, setActiveFormIndex] = useState<number | null>(null);
   const [activeSpamIndex, setActiveSpamIndex] = useState<number | null>(null);
-  const [extraSteps, setExtraSteps] = useState<ActionStep[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -87,13 +79,6 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
       });
       setForms(site.form_configs || []);
       setSpams(site.spam_configs || []);
-      if (site.extra_steps_json) {
-        try {
-          setExtraSteps(JSON.stringify(site.extra_steps_json).startsWith('[') ? JSON.parse(site.extra_steps_json) : []);
-        } catch (e) {
-          setExtraSteps([]);
-        }
-      }
     } else {
       setFormData({
         site_name: '',
@@ -110,7 +95,6 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
       });
       setForms([]);
       setSpams([]);
-      setExtraSteps([]);
       setActiveFormIndex(null);
       setActiveSpamIndex(null);
     }
@@ -205,11 +189,16 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
     setError(null);
 
     try {
+      // https:// 없이 입력하는 고객이 흔하므로 자동 보정 (백엔드 URL 검증 통과용)
+      const normUrl = (u: string) => (u && !/^https?:\/\//i.test(u) ? `https://${u}` : u);
       const payload = {
         ...formData,
-        extra_steps_json: extraSteps.length > 0 ? JSON.stringify(extraSteps) : null,
-        form_configs: forms,
-        spam_configs: spams
+        homepage_url: normUrl(formData.homepage_url.trim()),
+        // 고급 설정 textarea 값을 그대로 저장. (과거엔 별도 state가 항상 빈 배열이라
+        // 수정 저장 때마다 기존 팝업 우회 시퀀스가 조용히 삭제되던 버그가 있었다)
+        extra_steps_json: formData.extra_steps_json.trim() || null,
+        form_configs: forms.map(f => ({ ...f, form_url: normUrl((f.form_url || '').trim()) })),
+        spam_configs: spams.map(s => ({ ...s, board_url: normUrl((s.board_url || '').trim()) }))
       };
 
       if (site) {
@@ -295,22 +284,23 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                         ))}
                       </select>
                     ) : (
-                      <input 
+                      <input
                         name="hospital_name"
                         value={formData.hospital_name}
                         onChange={handleChange}
+                        placeholder="예: 강남점 (선택)"
                         className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all font-bold placeholder:text-slate-700"
-                        disabled
                       />
                     )}
                   </div>
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">홈페이지 URL *</label>
-                    <input 
+                    <input
                       required
                       name="homepage_url"
                       value={formData.homepage_url}
                       onChange={handleChange}
+                      placeholder="https://www.병원홈페이지.co.kr (https:// 생략 가능)"
                       className="w-full glass border border-white/5 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#9fb2c2]/40 transition-all font-bold text-[#c8d4de]"
                     />
                   </div>
@@ -354,14 +344,20 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                         <div className="mt-6 pt-6 border-t border-white/5 space-y-4 animate-in slide-in-from-top-2">
                           <input placeholder="폼 이름" value={form.name} onChange={e => handleFormChange(idx, 'name', e.target.value)} className="w-full glass-compact border border-white/5 rounded-xl px-4 py-2.5 text-sm font-bold" />
                           <input placeholder="폼 URL" value={form.form_url} onChange={e => handleFormChange(idx, 'form_url', e.target.value)} className="w-full glass-compact border border-white/5 rounded-xl px-4 py-2.5 text-sm text-[#c8d4de] font-bold" />
-                          <div className="grid grid-cols-2 gap-3">
-                            <input placeholder="이름 셀렉터" value={form.name_selector} onChange={e => handleFormChange(idx, 'name_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
-                            <input placeholder="연락처 셀렉터" value={form.phone_selector} onChange={e => handleFormChange(idx, 'phone_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
-                            <input placeholder="제목 셀렉터" value={form.subject_selector} onChange={e => handleFormChange(idx, 'subject_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
-                            <input placeholder="메시지 셀렉터" value={form.message_selector} onChange={e => handleFormChange(idx, 'message_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
-                            <input placeholder="동의 체크박스 셀렉터" value={form.agreement_selector} onChange={e => handleFormChange(idx, 'agreement_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
-                            <input placeholder="제출 버튼 셀렉터" value={form.submit_selector} onChange={e => handleFormChange(idx, 'submit_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
-                          </div>
+                          {/* 셀렉터 직접 입력은 개발자용 — 일반 고객은 'AI 자동 탐색'이 채워준다 */}
+                          <details>
+                            <summary className="cursor-pointer text-[11px] font-bold text-slate-500 hover:text-slate-300 transition-colors">
+                              입력칸 위치(셀렉터) 직접 지정 — 고급 · 보통은 'AI 자동 탐색'이 자동으로 채웁니다
+                            </summary>
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                              <input placeholder="이름 셀렉터" value={form.name_selector} onChange={e => handleFormChange(idx, 'name_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                              <input placeholder="연락처 셀렉터" value={form.phone_selector} onChange={e => handleFormChange(idx, 'phone_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                              <input placeholder="제목 셀렉터" value={form.subject_selector} onChange={e => handleFormChange(idx, 'subject_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                              <input placeholder="메시지 셀렉터" value={form.message_selector} onChange={e => handleFormChange(idx, 'message_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                              <input placeholder="동의 체크박스 셀렉터" value={form.agreement_selector} onChange={e => handleFormChange(idx, 'agreement_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                              <input placeholder="제출 버튼 셀렉터" value={form.submit_selector} onChange={e => handleFormChange(idx, 'submit_selector', e.target.value)} className="glass-compact text-xs p-3 rounded-xl border border-white/5" />
+                            </div>
+                          </details>
                           <input placeholder="성공 메시지 (예: 등록되었습니다) — 폼 점검 정확도↑" value={form.expected_success_text || ''} onChange={e => handleFormChange(idx, 'expected_success_text', e.target.value)} className="w-full glass-compact text-xs p-3 rounded-xl border border-white/5" />
                           <label className="flex items-start gap-3 p-3 rounded-xl border border-white/5 glass-compact cursor-pointer">
                             <input type="checkbox" checked={!!form.submit_test} onChange={e => handleFormChange(idx, 'submit_test', e.target.checked)} className="mt-0.5 accent-[#9fb2c2]" />
@@ -440,7 +436,7 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                       </label>
                     </div>
                     {formData.emergency_mode_active && (
-                      <textarea 
+                      <textarea
                         name="emergency_message"
                         value={formData.emergency_message}
                         onChange={handleChange}
@@ -448,6 +444,29 @@ const SiteConfigModal: React.FC<SiteConfigModalProps> = ({ isOpen, onClose, onSa
                         className="w-full glass-compact border border-amber-500/20 rounded-xl px-4 py-3 text-sm font-medium text-amber-100 animate-in slide-in-from-top-2"
                         placeholder="현재 서버 점검 중입니다. 급한 용무는 02-1234-5678로 연락 주세요."
                       />
+                    )}
+                    {site && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">홈페이지 설치 코드 (최초 1회)</label>
+                        <div className="flex items-stretch gap-2">
+                          <code className="flex-1 block text-[10px] text-slate-300 bg-black/40 border border-white/10 rounded-xl p-3 overflow-x-auto whitespace-pre font-mono">
+                            {`<script src="${window.location.origin}/static/keepy-banner.js" data-site-id="${site.id}"></script>`}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`<script src="${window.location.origin}/static/keepy-banner.js" data-site-id="${site.id}"></script>`);
+                              alert('설치 코드가 복사되었습니다. 병원 홈페이지의 </body> 바로 앞에 붙여넣어 주세요.');
+                            }}
+                            className="px-4 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-black hover:bg-amber-500/20 transition-all"
+                          >
+                            복사
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-relaxed ml-1">
+                          병원 홈페이지에 위 한 줄을 넣어두면, 긴급 배너를 켰을 때 사이트 상단에 안내가 자동 표시됩니다.
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>

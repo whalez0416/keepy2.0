@@ -64,8 +64,33 @@ def send_alert_email(site_name: str, check_type: str, status: str, fail_reason: 
     사이트 상태를 즉시 확인해 주시기 바랍니다.
     """
 
+    return _send_email(subject, body, to_list)
+
+
+def send_recovery_email(site_name: str, check_type: str, checked_at: str, recipients=None) -> bool:
+    """긴급 알림이 나갔던 장애가 정상으로 복구되면 고객에게 복구 사실을 알린다."""
+    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        return False
+    to_list = [r.strip() for r in (recipients or []) if r and r.strip()] or [settings.SMTP_USER]
+
+    subject = f"[{settings.APP_NAME}] {site_name} - 정상 복구 확인 ✅"
+    body = f"""
+    Keepy 모니터링 알림
+
+    사이트명: {site_name}
+    점검 유형: {check_type}
+    복구 확인 시각: {checked_at}
+
+    앞서 알림을 드렸던 문제가 정상으로 복구된 것을 확인했습니다.
+    Keepy는 계속해서 사이트를 감시합니다.
+    """
+    return _send_email(subject, body, to_list)
+
+
+def _send_email(subject: str, body: str, to_list) -> bool:
     msg = MIMEMultipart()
-    msg['From'] = settings.SMTP_FROM_EMAIL
+    # From 기본값이 미보유 도메인이면 DMARC 불일치로 스팸함에 빠질 수 있어 발신 계정으로 폴백
+    msg['From'] = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
     msg['To'] = ", ".join(to_list)
     msg['Subject'] = Header(subject, 'utf-8')
     msg.attach(MIMEText(body, 'plain', 'utf-8'))
@@ -81,15 +106,15 @@ def send_alert_email(site_name: str, check_type: str, status: str, fail_reason: 
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)
             server.quit()
-            logger.debug(f"알림 이메일 발송 성공: site_name={site_name} 수신={to_list} (시도 {attempt})")
+            logger.debug(f"이메일 발송 성공: 제목={subject} 수신={to_list} (시도 {attempt})")
             return True
         except Exception as e:
             last_error = e
-            logger.warning(f"알림 이메일 발송 실패(시도 {attempt}/{_SMTP_MAX_ATTEMPTS}): {str(e)}")
+            logger.warning(f"이메일 발송 실패(시도 {attempt}/{_SMTP_MAX_ATTEMPTS}): {str(e)}")
             if attempt < _SMTP_MAX_ATTEMPTS:
                 time.sleep(_SMTP_BACKOFF_SECONDS[attempt - 1])
 
     # 모든 재시도 실패 — 호출측(alert_service)이 Slack 등으로 운영자에게 알리고
     # 미발송(sent_at=None)으로 남겨 추적할 수 있도록 False 반환.
-    logger.error(f"알림 이메일 발송 최종 실패({_SMTP_MAX_ATTEMPTS}회): site_name={site_name} 사유={str(last_error)}")
+    logger.error(f"이메일 발송 최종 실패({_SMTP_MAX_ATTEMPTS}회): 제목={subject} 사유={str(last_error)}")
     return False

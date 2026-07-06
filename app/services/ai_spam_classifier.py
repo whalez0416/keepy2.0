@@ -421,7 +421,12 @@ def run_ai_spam_hunter(db: Session, config: SpamConfig) -> Dict[str, Any]:
                     page = context.new_page()
 
                     page.goto(config.board_url, timeout=30000)
-                    page.wait_for_load_state("networkidle")
+                    try:
+                        # 채팅위젯/GA 등이 계속 통신하는 게시판은 networkidle이 영영 안 와
+                        # 점검 전체가 죽는다. 다른 체커와 동일하게 타임아웃 후 그냥 진행.
+                        page.wait_for_load_state("networkidle", timeout=10000)
+                    except Exception:
+                        pass
 
                     posts = _extract_posts_from_page(page, config)
                     summary["total_posts"] = len(posts)
@@ -430,6 +435,7 @@ def run_ai_spam_hunter(db: Session, config: SpamConfig) -> Dict[str, Any]:
                         logger.warning(f"[AI SPAM] 게시물을 찾을 수 없음: {config.board_url}")
                         summary["status"] = "warning"
                         summary["error"] = "게시물을 찾을 수 없습니다. 게시판 구조가 일반적이지 않을 수 있습니다."
+                        _write_spam_log(db, config, summary)
                         return summary
 
                     logger.info(f"[AI SPAM] {len(posts)}개 게시물 분석 중...")
@@ -458,7 +464,28 @@ def run_ai_spam_hunter(db: Session, config: SpamConfig) -> Dict[str, Any]:
         summary["error"] = str(e)
         logger.error(f"[AI SPAM] 오류: {e}")
 
+    _write_spam_log(db, config, summary)
     return summary
+
+
+def _write_spam_log(db: Session, config: SpamConfig, summary: Dict[str, Any]):
+    """스팸 점검 이력 기록. 다른 점검처럼 Log를 남긴다.
+
+    - 대시보드/로그 화면에서 스팸 감시가 살아있는지 보이고,
+    - '스팸 없음(success)' 로그가 있어야 알림 중복억제가 회복을 인지해
+      고객이 스팸을 지운 뒤 '새' 스팸이 오면 24시간 기다리지 않고 즉시 재알림된다.
+    """
+    try:
+        if summary.get("spam_detected", 0) > 0:
+            log_status, log_reason = "warning", f"스팸 의심 게시물 {summary['spam_detected']}건 탐지"
+        elif summary.get("status") == "success":
+            log_status, log_reason = "success", None
+        else:
+            log_status, log_reason = summary.get("status", "fail"), summary.get("error")
+        db.add(Log(site_id=config.site_id, check_type="spam", status=log_status, fail_reason=log_reason))
+        db.commit()
+    except Exception as e:
+        logger.error(f"[AI SPAM] 점검 로그 기록 실패(무시): {e}")
 
 
 def check_all_spam_ai(db: Session) -> List[Dict[str, Any]]:

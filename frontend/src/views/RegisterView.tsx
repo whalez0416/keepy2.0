@@ -28,7 +28,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
             <div>
               <h4 className="font-bold text-white text-base">직접 회원가입은 제공되지 않습니다</h4>
               <p className="text-amber-200/80 text-xs mt-1 leading-relaxed">
-                Keepy는 프리미엄 병원 보안/모니터링 서비스로, 보안 신뢰성과 멀티 테넌트 무결성을 유지하기 위해 **담당자 직접 계약 및 마스터 계정의 수동 발급 정책**을 채택하고 있습니다.
+                Keepy는 프리미엄 병원 보안/모니터링 서비스로, 보안 신뢰성과 멀티 테넌트 무결성을 유지하기 위해 <b className="text-white">담당자 직접 계약 및 마스터 계정의 수동 발급 정책</b>을 채택하고 있습니다.
               </p>
             </div>
           </div>

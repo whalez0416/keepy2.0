@@ -1,17 +1,18 @@
 (function() {
     // Keepy Emergency Banner Script
-    // Usage: <script src="http://your-keepy-url/static/keepy-banner.js" data-site-id="YOUR_SITE_ID"></script>
+    // Usage: <script src="https://<keepy-server>/static/keepy-banner.js" data-site-id="YOUR_SITE_ID"></script>
 
     const scriptTag = document.currentScript;
     const siteId = scriptTag.getAttribute('data-site-id');
-    
-    // API URL 구성
+
+    // API 주소: 이 스크립트를 불러온 Keepy 서버의 origin을 쓴다.
+    // (과거엔 미지정 시 '고객 병원 사이트'의 origin으로 호출해 항상 404 — 기본 설치가 동작하지 않았다)
     const apiBase = scriptTag.getAttribute('data-api-base');
-    const baseUrl = apiBase || (window.location.origin.includes('localhost') ? 'http://localhost:8000' : window.location.origin);
-    
+    const baseUrl = apiBase || new URL(scriptTag.src).origin;
+
     // siteId에 이미 쿼리스트링이 포함되어 있을 경우를 고려하여 처리
     let apiUrl;
-    if (siteId.includes('?')) {
+    if (siteId && siteId.includes('?')) {
         const [id, query] = siteId.split('?');
         apiUrl = `${baseUrl}/api/sites/public/${id}/banner?${query}`;
     } else {
@@ -44,16 +45,22 @@
             border-bottom: 2px solid #d4ac0d;
             transition: all 0.3s ease;
         `;
-        
+
         const content = document.createElement('div');
         content.style.maxWidth = '1000px';
-        content.innerHTML = `<span style="margin-right: 8px;">📢</span> ${message}`;
-        
+        const icon = document.createElement('span');
+        icon.style.marginRight = '8px';
+        icon.textContent = '📢';
+        const text = document.createElement('span');
+        text.textContent = message; // textContent: 메시지에 태그가 섞여도 스크립트로 실행되지 않게
+        content.appendChild(icon);
+        content.appendChild(text);
+
         banner.appendChild(content);
-        
+
         // 최상단에 추가
         document.body.prepend(banner);
-        
+
         // 페이지 상단 여백 조정 (기존 레이아웃 깨짐 방지)
         const updatePadding = () => {
             document.body.style.marginTop = banner.offsetHeight + 'px';

@@ -11,6 +11,18 @@ import {
 } from 'lucide-react';
 import { alertsApi, Alert, sitesApi, Site } from '../lib/api';
 
+// 점검 유형 코드를 고객이 읽을 수 있는 한글로 표기
+const CHECK_TYPE_LABELS: Record<string, string> = {
+  homepage: '홈페이지',
+  ssl: 'SSL 인증서',
+  spam: '스팸 게시물',
+  contact_hijack: '연락처 변조',
+  visual_defacement: '화면 변조',
+  admin_exposure: '관리자 페이지 노출',
+};
+const checkTypeLabel = (t: string) =>
+  t.startsWith('form:') ? `상담폼 (${t.slice(5)})` : t === 'form' ? '상담폼' : CHECK_TYPE_LABELS[t] || t;
+
 const AlertHistoryView: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [sites, setSites] = useState<Record<number, Site>>({});
@@ -137,7 +149,7 @@ const AlertHistoryView: React.FC = () => {
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-black text-slate-200">{site?.site_name || '알 수 없는 병원'}</span>
-                    <span className="text-[10px] font-bold bg-white/5 px-2 py-0.5 rounded text-slate-500 uppercase">{alert.check_type}</span>
+                    <span className="text-[10px] font-bold bg-white/5 px-2 py-0.5 rounded text-slate-400">{checkTypeLabel(alert.check_type)}</span>
                   </div>
                   <p className="text-sm text-slate-400 leading-relaxed">
                     {alert.message}

@@ -70,18 +70,19 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
     return () => clearInterval(timer);
   }, []);
 
-  // 통계 계산
+  // 통계 계산 — 사이트별 최신 로그 기준. 로그가 아직 없는 갓 등록 사이트는
+  // '장애'가 아니라 '첫 점검 대기'로 분류한다(등록 직후 빨간 경고 오인 방지).
+  const latestLogOf = (siteId: number) => logs.find(l => l.site_id === siteId) || null;
   const activeSitesCount = sites.filter(s => s.is_active).length;
-  const healthySitesCount = sites.filter(s => {
-    const siteLogs = logs.filter(l => l.site_id === s.id);
-    return siteLogs.length > 0 && siteLogs[0].status === 'success';
-  }).length;
-  
-  const uptimePercent = sites.length > 0 ? Math.round((healthySitesCount / sites.length) * 100) : 0;
-  const issueCount = sites.length - healthySitesCount;
+  const checkedSites = sites.filter(s => latestLogOf(s.id) !== null);
+  const healthySitesCount = checkedSites.filter(s => latestLogOf(s.id)!.status === 'success').length;
 
-  // 차트 데이터 변환
+  const uptimePercent = checkedSites.length > 0 ? Math.round((healthySitesCount / checkedSites.length) * 100) : 100;
+  const issueCount = checkedSites.length - healthySitesCount;
+
+  // 차트 데이터 변환 — 홈페이지 점검만 표시(폼 점검은 수십 초대라 섞으면 그래프가 왜곡됨)
   const chartData = logs
+    .filter(log => log.check_type === 'homepage' && log.response_time != null)
     .slice(0, 15)
     .reverse()
     .map(log => ({
@@ -154,11 +155,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
           <button 
             className="ml-auto bg-red-500 text-white px-6 py-3 rounded-2xl font-black hover:bg-red-600 transition-all shadow-xl shadow-red-500/20 active:scale-95 shrink-0"
             onClick={() => {
-              // 장애가 있거나 로그가 없는 사이트 찾기
+              // 최신 점검이 정상이 아닌 사이트 찾기 (첫 점검 대기 중인 사이트는 제외)
               const firstIssue = sites.find(s => {
-                const siteLogs = logs.filter(l => l.site_id === s.id);
-                const isHealthy = siteLogs.length > 0 && siteLogs[0].status === 'success';
-                return !isHealthy;
+                const latest = latestLogOf(s.id);
+                return latest !== null && latest.status !== 'success';
               });
 
               if (firstIssue) {
@@ -217,9 +217,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {sites.map(site => (
                 <div key={site.id} id={`site-card-${site.id}`}>
-                  <HospitalCard 
-                    site={site} 
-                    onRefresh={fetchData} 
+                  <HospitalCard
+                    site={site}
+                    latestLog={latestLogOf(site.id)}
+                    onRefresh={fetchData}
                     onEdit={onEditSite}
                     onViewLog={() => {
                       setSelectedSiteForLog(site);
