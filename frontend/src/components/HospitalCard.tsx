@@ -4,13 +4,15 @@ import { Site, SiteCheckLog, sitesApi } from '../lib/api';
 
 interface HospitalCardProps {
   site: Site;
+  /** Dashboard가 가용성 로그(홈페이지/폼) 기준으로 계산해 내려주는 상태 */
+  status?: 'ok' | 'warn' | 'error' | 'pending';
   latestLog?: SiteCheckLog | null;
   onRefresh?: () => void;
   onEdit?: (site: Site) => void;
   onViewLog?: () => void;
 }
 
-const HospitalCard: React.FC<HospitalCardProps> = ({ site, latestLog, onRefresh, onEdit, onViewLog }) => {
+const HospitalCard: React.FC<HospitalCardProps> = ({ site, status = 'pending', latestLog, onRefresh, onEdit, onViewLog }) => {
   const [checking, setChecking] = React.useState(false);
 
   const handleManualCheck = async () => {
@@ -27,15 +29,6 @@ const HospitalCard: React.FC<HospitalCardProps> = ({ site, latestLog, onRefresh,
       setChecking(false);
     }
   };
-
-  // 상태는 실제 최신 점검 로그로 판정한다 (로그 없음 = 첫 점검 대기)
-  const status: 'ok' | 'warn' | 'error' | 'pending' = !latestLog
-    ? 'pending'
-    : latestLog.status === 'success'
-      ? 'ok'
-      : latestLog.status === 'warning'
-        ? 'warn'
-        : 'error';
 
   const S = {
     ok:      { label: '정상 작동중', text: 'text-emerald-400', bg: 'bg-emerald-500/20', border: 'border-emerald-500/50', dot: 'bg-emerald-500', header: 'from-emerald-500/15' },

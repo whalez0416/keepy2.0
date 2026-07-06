@@ -45,20 +45,30 @@ def handle_check_result(db: Session, site: Site, check_type: str, status: str, f
             Alert.resolved_at.is_(None),
         ).all()
         if unresolved:
-            had_sent_danger = any(a.alert_level == "danger" and a.sent_at for a in unresolved)
+            had_sent = any(a.sent_at for a in unresolved)
             for a in unresolved:
                 a.resolved_at = datetime.utcnow()
             db.commit()
-            # 긴급(danger) 알림이 실제 발송됐던 건이면 복구 사실도 고객에게 알린다.
+            # 알림이 실제 발송됐던 건이면 복구 사실도 고객에게 알린다.
             # (장애 메일만 받고 복구 메일이 없으면 고객은 끝났는지 알 수 없다)
-            if had_sent_danger:
-                emails, _ = _recipients_for_site(site)
-                send_recovery_email(
-                    site_name=site.site_name,
-                    check_type=check_type,
-                    checked_at=_now_kst_str(),
-                    recipients=emails,
-                )
+            # 단, '최근 48시간 내 실제로 실패 로그가 있던' 경우에만 보낸다 — resolved_at
+            # 도입 이전부터 쌓여 있던 옛 미해결 알림이 배포 후 첫 정상 점검에서 일괄
+            # 해결되며 몇 주 지난 건에 뜬금없는 복구 메일이 나가는 것을 막는다.
+            if had_sent:
+                recently_failing = db.query(Log).filter(
+                    Log.site_id == site.id,
+                    Log.check_type == check_type,
+                    Log.status != "success",
+                    Log.checked_at > datetime.utcnow() - timedelta(hours=48),
+                ).first()
+                if recently_failing:
+                    emails, _ = _recipients_for_site(site)
+                    send_recovery_email(
+                        site_name=site.site_name,
+                        check_type=check_type,
+                        checked_at=_now_kst_str(),
+                        recipients=emails,
+                    )
         return
 
     # 알림 중복 억제: '미해결 상태가 지속되는 동안 1번만' 보낸다.

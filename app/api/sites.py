@@ -141,6 +141,8 @@ def update_site(site_id: int, site_update: schemas.SiteUpdate, db: Session = Dep
         if contact:
             for var, value in contact_data.items():
                 setattr(contact, var, value)
+            # 둘 다 비우면 감시 대상이 없으므로 비활성화(빈 브라우저 점검이 매시간 도는 것 방지)
+            contact.is_active = bool(contact.expected_phone or contact.expected_kakao_url)
         elif contact_data.get("expected_phone") or contact_data.get("expected_kakao_url"):
             db.add(models.ContactConfig(site_id=db_site.id, **contact_data))
 

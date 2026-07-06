@@ -183,4 +183,34 @@ check('복합 신호("도메인이 만료")는 유지', "도메인이 만료" in
 print("T8 알림 시각 KST")
 check("발송 시각이 KST 포맷", "(한국시간)" in sent_alerts[0]["checked_at"])
 
+# ── T9: 옛 미해결 알림 일괄 해결 시 복구 메일 억제 ────────
+print("T9 복구 메일 게이트(최근 실패 이력 없으면 침묵 해결)")
+d = SessionLocal()
+site2 = d.query(models.Site).get(site2_id)
+from datetime import datetime, timedelta
+old = datetime.utcnow() - timedelta(days=20)
+d.add(models.Alert(site_id=site2_id, check_type="homepage", alert_level="danger",
+                   message="옛 오경보", sent_at=old, created_at=old))
+d.commit()
+before = len(sent_recoveries)
+alert_service.handle_check_result(d, site2, "homepage", "success", None)
+d.expire_all()
+a2 = d.query(models.Alert).filter_by(site_id=site2_id, check_type="homepage").first()
+check("옛 알림 resolved_at 처리됨", a2.resolved_at is not None)
+check("최근 실패 이력 없으면 복구 메일 안 나감(배포 백필 보호)", len(sent_recoveries) == before)
+d.close()
+
+# ── T10: 연락처 감시 값 모두 비우면 비활성화 ──────────────
+print("T10 연락처 감시 비우기 → 비활성화")
+client.patch(f"/api/sites/{site_id}", json={"expected_phone": "", "expected_kakao_url": ""})
+d = SessionLocal()
+cc3 = d.query(models.ContactConfig).filter_by(site_id=site_id).first()
+check("둘 다 비우면 is_active=False(유령 점검 방지)", cc3.is_active is False)
+d.close()
+client.patch(f"/api/sites/{site_id}", json={"expected_phone": "02-999-8888"})
+d = SessionLocal()
+cc4 = d.query(models.ContactConfig).filter_by(site_id=site_id).first()
+check("다시 값 넣으면 재활성화", cc4.is_active is True and cc4.expected_phone == "02-999-8888")
+d.close()
+
 print(f"\n전체 통과: {len(passed)}건 ✅")

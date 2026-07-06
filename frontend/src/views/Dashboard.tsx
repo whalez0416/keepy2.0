@@ -52,7 +52,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
 
       // Logs fetching (don't let it block sites display)
       try {
-        const logsRes = await logsApi.list();
+        // limit 300: 기본 100건은 사이트가 늘면 오래된 사이트의 최신 로그가 밀려나
+        // '첫 점검 대기'로 오표시될 수 있다. ponytail: 파일럿(≤10곳) 기준 — 확장 시 사이트별 최신상태 API 필요
+        const logsRes = await logsApi.list({ limit: 300 });
         setLogs(logsRes.data);
       } catch (logError) {
         console.error('Failed to fetch logs:', logError);
@@ -70,12 +72,24 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
     return () => clearInterval(timer);
   }, []);
 
-  // 통계 계산 — 사이트별 최신 로그 기준. 로그가 아직 없는 갓 등록 사이트는
-  // '장애'가 아니라 '첫 점검 대기'로 분류한다(등록 직후 빨간 경고 오인 방지).
+  // 통계 계산 — 카드/통계의 상태는 '가용성 신호'(홈페이지·상담폼 점검)만 본다.
+  // 스팸/화면변조 등의 시스템성 warning 로그로 카드가 거짓 빨간불이 되는 것 방지.
+  // 실패도 백엔드 알림 규칙과 동일하게 '2연속 실패'라야 장애, 단발은 주의로 표시.
+  // 로그가 아직 없는 갓 등록 사이트는 '첫 점검 대기'(장애 아님).
   const latestLogOf = (siteId: number) => logs.find(l => l.site_id === siteId) || null;
+  const statusOf = (siteId: number): 'ok' | 'warn' | 'error' | 'pending' => {
+    const avail = logs.filter(l => l.site_id === siteId && (l.check_type === 'homepage' || l.check_type.startsWith('form')));
+    const latest = avail[0];
+    if (!latest) return 'pending';
+    if (latest.status === 'success') return 'ok';
+    if (latest.status === 'warning') return 'warn';
+    // fail: 같은 점검 유형이 2연속 실패일 때만 '장애', 단발이면 '주의'
+    const sameType = avail.filter(l => l.check_type === latest.check_type);
+    return sameType.length >= 2 && sameType[1].status === 'fail' ? 'error' : 'warn';
+  };
   const activeSitesCount = sites.filter(s => s.is_active).length;
-  const checkedSites = sites.filter(s => latestLogOf(s.id) !== null);
-  const healthySitesCount = checkedSites.filter(s => latestLogOf(s.id)!.status === 'success').length;
+  const checkedSites = sites.filter(s => statusOf(s.id) !== 'pending');
+  const healthySitesCount = checkedSites.filter(s => statusOf(s.id) === 'ok').length;
 
   const uptimePercent = checkedSites.length > 0 ? Math.round((healthySitesCount / checkedSites.length) * 100) : 100;
   const issueCount = checkedSites.length - healthySitesCount;
@@ -155,11 +169,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
           <button 
             className="ml-auto bg-red-500 text-white px-6 py-3 rounded-2xl font-black hover:bg-red-600 transition-all shadow-xl shadow-red-500/20 active:scale-95 shrink-0"
             onClick={() => {
-              // 최신 점검이 정상이 아닌 사이트 찾기 (첫 점검 대기 중인 사이트는 제외)
-              const firstIssue = sites.find(s => {
-                const latest = latestLogOf(s.id);
-                return latest !== null && latest.status !== 'success';
-              });
+              // 상태가 정상이 아닌 사이트 찾기 (첫 점검 대기 중인 사이트는 제외)
+              const firstIssue = sites.find(s => ['warn', 'error'].includes(statusOf(s.id)));
 
               if (firstIssue) {
                 // 로그 모달 띄우기
@@ -219,6 +230,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onEditSite, selectedOrgId
                 <div key={site.id} id={`site-card-${site.id}`}>
                   <HospitalCard
                     site={site}
+                    status={statusOf(site.id)}
                     latestLog={latestLogOf(site.id)}
                     onRefresh={fetchData}
                     onEdit={onEditSite}
