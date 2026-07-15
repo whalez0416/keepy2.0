@@ -1,13 +1,13 @@
 import os
 import socket
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from app.config import settings
 from app.db import engine, Base, SessionLocal, run_light_migrations
 from app.api import sites, logs, alerts, checks, spam, auth, organizations, leads, discovery
-from app.api.auth import get_password_hash, verify_password
+from app.api.auth import get_password_hash, verify_password, get_current_user
 from app.models import User, UserRole
 from app.scheduler import scheduler, start_scheduler
 from app.services.scheduler_service import init_all_jobs
@@ -112,6 +112,57 @@ def monitoring_health():
         # 503 → 외부 업타임 모니터가 '다운'으로 감지해 운영자에게 통보하게 한다.
         return JSONResponse(status_code=503, content=payload)
     return payload
+
+
+@app.get("/api/health/smtp-test")
+def smtp_test(current_user: User = Depends(get_current_user)):
+    """운영자 전용 SMTP 진단. 실제로 접속→STARTTLS→로그인→본인에게 발송을 단계별로
+    시도하고, 실패하면 어느 단계에서 어떤 예외가 났는지 그대로 반환한다.
+    (알림 메일이 왜 안 나가는지 로그를 뒤지지 않고 즉시 확정하기 위함.)"""
+    from fastapi import HTTPException
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.header import Header
+
+    if current_user.role != UserRole.SUPERADMIN:
+        raise HTTPException(status_code=403, detail="운영자 전용입니다.")
+
+    result = {
+        "host": settings.SMTP_HOST,
+        "port": settings.SMTP_PORT,
+        "user_set": bool(settings.SMTP_USER),
+        "password_set": bool(settings.SMTP_PASSWORD),
+        # 앱비번 공백 혼입은 흔한 실수라 길이만 노출(값은 노출 안 함).
+        "password_len": len(settings.SMTP_PASSWORD or ""),
+        "password_has_space": (" " in (settings.SMTP_PASSWORD or "")),
+        "from": settings.SMTP_FROM_EMAIL or settings.SMTP_USER,
+        "step": None,
+        "ok": False,
+        "error": None,
+    }
+    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        result["step"] = "config"
+        result["error"] = "SMTP_USER 또는 SMTP_PASSWORD 미설정"
+        return result
+    try:
+        result["step"] = "connect"
+        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, local_hostname="localhost", timeout=20)
+        result["step"] = "starttls"
+        server.starttls()
+        result["step"] = "login"
+        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        result["step"] = "send"
+        msg = MIMEText("Keepy SMTP 진단 테스트 메일입니다.", "plain", "utf-8")
+        msg["From"] = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
+        msg["To"] = settings.SMTP_USER
+        msg["Subject"] = Header("[Keepy] SMTP 진단 테스트", "utf-8")
+        server.send_message(msg)
+        server.quit()
+        result["step"] = "done"
+        result["ok"] = True
+    except Exception as e:
+        result["error"] = f"{type(e).__name__}: {e}"
+    return result
 
 
 # ─────────────────────────────────────────────────────────────
