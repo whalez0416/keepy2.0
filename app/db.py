@@ -8,7 +8,11 @@ from .config import settings
 if settings.DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 else:
-    connect_args = {}
+    # connect_timeout: 운영 DB(Postgres)가 응답 안 하면 부팅 시 create_all이
+    # 무한 대기해 Render가 "복구 실패"로만 뜨고 원인을 알 수 없었다(Supabase
+    # auto-pause 사고). 10초 후 명확한 OperationalError로 실패시켜 로그에
+    # 원인이 바로 남게 한다. (psycopg2 인자, 단위=초)
+    connect_args = {"connect_timeout": 10}
 
 engine = create_engine(
     settings.DATABASE_URL,
